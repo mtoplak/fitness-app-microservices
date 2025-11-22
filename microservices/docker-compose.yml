@@ -1,0 +1,297 @@
+version: '3.8'
+
+services:
+  # ========== KONG GATEWAY ==========
+  kong-database:
+    image: postgres:15-alpine
+    container_name: kong-database
+    environment:
+      POSTGRES_USER: kong
+      POSTGRES_DB: kong
+      POSTGRES_PASSWORD: kongpass
+    volumes:
+      - kong-db-data:/var/lib/postgresql/data
+    networks:
+      - fitness-network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "kong"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kong-migrations:
+    image: kong:3.4-alpine
+    container_name: kong-migrations
+    command: kong migrations bootstrap
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kongpass
+      KONG_PG_DATABASE: kong
+    depends_on:
+      kong-database:
+        condition: service_healthy
+    networks:
+      - fitness-network
+    restart: on-failure
+
+  kong:
+    image: kong:3.4-alpine
+    container_name: kong-gateway
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kongpass
+      KONG_PG_DATABASE: kong
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_PROXY_LISTEN: 0.0.0.0:8000, 0.0.0.0:8443 ssl
+    depends_on:
+      kong-database:
+        condition: service_healthy
+      kong-migrations:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"   # Proxy HTTP
+      - "8443:8443"   # Proxy HTTPS
+      - "8001:8001"   # Admin API HTTP
+      - "8444:8444"   # Admin API HTTPS
+    networks:
+      - fitness-network
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  konga:
+    image: pantsel/konga:latest
+    container_name: konga-ui
+    environment:
+      NODE_ENV: development
+      DB_ADAPTER: postgres
+      DB_HOST: kong-database
+      DB_USER: kong
+      DB_PASSWORD: kongpass
+      DB_DATABASE: konga
+    depends_on:
+      - kong-database
+    ports:
+      - "1337:1337"
+    networks:
+      - fitness-network
+
+  # ========== USER SERVICE ==========
+  mongodb-users:
+    image: mongo:7-jammy
+    container_name: mongodb-users
+    volumes:
+      - mongo-users-data:/data/db
+    networks:
+      - fitness-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    environment:
+      MONGODB_URI: mongodb://mongodb-users:27017/fitness-users
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      PORT: 3001
+      NODE_ENV: development
+    depends_on:
+      mongodb-users:
+        condition: service_healthy
+    networks:
+      - fitness-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========== SUBSCRIPTION SERVICE ==========
+  mongodb-subscriptions:
+    image: mongo:7-jammy
+    container_name: mongodb-subscriptions
+    volumes:
+      - mongo-subscriptions-data:/data/db
+    networks:
+      - fitness-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  subscription-service:
+    build:
+      context: ./subscription-service
+      dockerfile: Dockerfile
+    container_name: subscription-service
+    environment:
+      MONGODB_URI: mongodb://mongodb-subscriptions:27017/fitness-subscriptions
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      PORT: 3002
+      NODE_ENV: development
+      USER_SERVICE_URL: http://user-service:3001
+    depends_on:
+      mongodb-subscriptions:
+        condition: service_healthy
+    networks:
+      - fitness-network
+
+  # ========== TRAINER BOOKING SERVICE ==========
+  mongodb-trainer-bookings:
+    image: mongo:7-jammy
+    container_name: mongodb-trainer-bookings
+    volumes:
+      - mongo-trainer-bookings-data:/data/db
+    networks:
+      - fitness-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  trainer-booking-service:
+    build:
+      context: ./trainer-booking-service
+      dockerfile: Dockerfile
+    container_name: trainer-booking-service
+    environment:
+      MONGODB_URI: mongodb://mongodb-trainer-bookings:27017/fitness-trainer-bookings
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      PORT: 3003
+      NODE_ENV: development
+      USER_SERVICE_URL: http://user-service:3001
+      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
+    depends_on:
+      mongodb-trainer-bookings:
+        condition: service_healthy
+    networks:
+      - fitness-network
+
+  # ========== WORKOUT SCHEDULE SERVICE ==========
+  mongodb-workout-schedules:
+    image: mongo:7-jammy
+    container_name: mongodb-workout-schedules
+    volumes:
+      - mongo-workout-schedules-data:/data/db
+    networks:
+      - fitness-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  workout-schedule-service:
+    build:
+      context: ./workout-schedule-service
+      dockerfile: Dockerfile
+    container_name: workout-schedule-service
+    environment:
+      MONGODB_URI: mongodb://mongodb-workout-schedules:27017/fitness-workout-schedules
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      PORT: 3004
+      NODE_ENV: development
+      USER_SERVICE_URL: http://user-service:3001
+    depends_on:
+      mongodb-workout-schedules:
+        condition: service_healthy
+    networks:
+      - fitness-network
+
+  # ========== GROUP CLASS BOOKING SERVICE ==========
+  mongodb-group-bookings:
+    image: mongo:7-jammy
+    container_name: mongodb-group-bookings
+    volumes:
+      - mongo-group-bookings-data:/data/db
+    networks:
+      - fitness-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  group-class-booking-service:
+    build:
+      context: ./group-class-booking-service
+      dockerfile: Dockerfile
+    container_name: group-class-booking-service
+    environment:
+      MONGODB_URI: mongodb://mongodb-group-bookings:27017/fitness-group-bookings
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      PORT: 3005
+      NODE_ENV: development
+      USER_SERVICE_URL: http://user-service:3001
+      WORKOUT_SCHEDULE_SERVICE_URL: http://workout-schedule-service:3004
+      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
+    depends_on:
+      mongodb-group-bookings:
+        condition: service_healthy
+    networks:
+      - fitness-network
+
+  # ========== ADMIN REPORTING SERVICE ==========
+  mongodb-admin-reports:
+    image: mongo:7-jammy
+    container_name: mongodb-admin-reports
+    volumes:
+      - mongo-admin-reports-data:/data/db
+    networks:
+      - fitness-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  admin-reporting-service:
+    build:
+      context: ./admin-reporting-service
+      dockerfile: Dockerfile
+    container_name: admin-reporting-service
+    environment:
+      MONGODB_URI: mongodb://mongodb-admin-reports:27017/fitness-admin-reports
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      PORT: 3006
+      NODE_ENV: development
+      USER_SERVICE_URL: http://user-service:3001
+      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
+      TRAINER_BOOKING_SERVICE_URL: http://trainer-booking-service:3003
+      WORKOUT_SCHEDULE_SERVICE_URL: http://workout-schedule-service:3004
+      GROUP_CLASS_BOOKING_SERVICE_URL: http://group-class-booking-service:3005
+    depends_on:
+      mongodb-admin-reports:
+        condition: service_healthy
+    networks:
+      - fitness-network
+
+networks:
+  fitness-network:
+    driver: bridge
+
+volumes:
+  kong-db-data:
+  mongo-users-data:
+  mongo-subscriptions-data:
+  mongo-trainer-bookings-data:
+  mongo-workout-schedules-data:
+  mongo-group-bookings-data:
+  mongo-admin-reports-data:
