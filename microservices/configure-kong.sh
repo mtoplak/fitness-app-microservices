@@ -10,10 +10,10 @@ done
 echo "Kong is ready! Configuring services..."
 
 # Kreiraj service za User Service
-# Na Linuxu koristimo host.docker.internal ili 172.17.0.1 (docker bridge)
+# Koristimo localhost jer je Kong u host network mode
 curl -i -X POST http://localhost:8001/services/ \
   --data name=user-service \
-  --data url=http://172.17.0.1:3001
+  --data url=http://localhost:3001
 
 # Kreiraj route za User Service
 curl -i -X POST http://localhost:8001/services/user-service/routes \
