@@ -21,7 +21,7 @@ services:
 
   # Kong Migrations
   kong-migrations:
-    image: kong:3.3.1-alpine
+    image: kong:3.3.1
     container_name: kong-migrations
     command: kong migrations bootstrap
     environment:
@@ -39,7 +39,7 @@ services:
 
   # Kong Gateway
   kong:
-    image: kong:3.3.1-alpine
+    image: kong:3.3.1
     container_name: kong-gateway
     environment:
       KONG_DATABASE: postgres
@@ -85,11 +85,29 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  mongo-group-bookings:
+    image: mongo:7
+    container_name: mongo-group-bookings
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: fitness_group_bookings
+    volumes:
+      - mongo-group-bookings-data:/data/db
+    networks:
+      - fitness-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   kong-db-data:
   mongo-users-data:
-
+  mongo-group-bookings-data:
 networks:
   fitness-network:
     driver: bridge
