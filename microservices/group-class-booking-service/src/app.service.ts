@@ -355,4 +355,22 @@ export class AppService {
       status: cls.status,
     }));
   }
+
+  deleteBooking(id: string) {
+    const booking = this.bookingModel.findById(id);
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+    this.bookingModel.findByIdAndDelete(id);
+    return { message: 'Booking deleted successfully' };
+  }
+
+  deleteClass(id: string) {
+    const groupClass = this.groupClassModel.findById(id);
+    if (!groupClass) {
+      throw new NotFoundException('Group class not found');
+    }
+    this.groupClassModel.findByIdAndDelete(id);
+    return { message: 'Group class deleted successfully' };
+  }
 }

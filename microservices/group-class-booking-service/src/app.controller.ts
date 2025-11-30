@@ -84,7 +84,12 @@ export class AppController {
   ): Promise<BookingResponseDto> {
     return this.appService.updateBooking(id, updateBookingDto);
   }
-
+  // Delete class
+  @Delete('classes/:id')
+  @HttpCode(HttpStatus.OK)
+  async deleteClass(@Param('id') id: string): Promise<{ message: string }> {
+    return this.appService.deleteClass(id);
+  }
   // Seznam vseh udeležencev za določeno vadbo (za trenerja)
   @Get('classes/:classId/participants')
   async getClassParticipants(
@@ -103,7 +108,7 @@ export class AppController {
   }> {
     return this.appService.checkClassAvailability(classId);
   }
-
+  
   // Pridobi vse prihajajoče vadbe
   @Get('classes')
   async getUpcomingClasses() {

@@ -114,7 +114,7 @@ export class AppController {
   }
 
   // Prekliči urnik (soft delete)
-  @Post('schedules/:id/cancel')
+  @Delete('schedules/:id/cancel')
   async cancelSchedule(@Param('id') id: string): Promise<ScheduleResponseDto> {
     return this.appService.cancelSchedule(id);
   }
