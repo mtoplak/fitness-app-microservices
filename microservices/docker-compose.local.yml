@@ -234,6 +234,19 @@ services:
       timeout: 5s
       retries: 5
 
+  # Frontend
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: fitness-frontend
+    ports:
+      - "8080:8080"
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    networks:
+      - fitness-local-network
+
 volumes:
   mongo-users-local-data:
   mongo-group-bookings-local-data:
