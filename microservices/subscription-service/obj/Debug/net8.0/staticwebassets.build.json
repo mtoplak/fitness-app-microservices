@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "hqWKGvFYgmCpt7DqvS0m+J2gIGkuclh9yZESVhZvJPc=",
+  "Source": "subscription-service",
+  "BasePath": "_content/subscription-service",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}
