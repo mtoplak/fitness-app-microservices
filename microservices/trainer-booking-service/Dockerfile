@@ -1,15 +1,17 @@
-FROM node:20-alpine
-
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
 
-COPY package*.json ./
+COPY *.csproj ./
+RUN dotnet restore
 
-RUN npm install
+COPY . ./
+RUN dotnet publish -c Release -o out
 
-COPY . .
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /app/out .
 
-RUN npm run build
-
-EXPOSE 3001
-
-CMD ["npm", "run", "start:prod"]
+EXPOSE 3003
+ENTRYPOINT ["dotnet", "trainer-booking-service.dll"]
