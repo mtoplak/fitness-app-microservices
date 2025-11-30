@@ -1,6 +1,6 @@
 import { IsOptional, IsString, IsDateString, IsNumber, Min } from 'class-validator';
 
-export class UpdateScheduleDto {
+export class UpdateGroupClassDto {
   @IsOptional()
   @IsString()
   name?: string;
@@ -12,10 +12,6 @@ export class UpdateScheduleDto {
   @IsOptional()
   @IsString()
   trainerId?: string;
-
-  @IsOptional()
-  @IsString()
-  memberId?: string;
 
   @IsOptional()
   @IsDateString()
@@ -33,9 +29,5 @@ export class UpdateScheduleDto {
 
   @IsOptional()
   @IsString()
-  type?: string;
-
-  @IsOptional()
-  @IsString()
-  notes?: string;
+  status?: string;
 }

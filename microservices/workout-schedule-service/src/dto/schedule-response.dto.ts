@@ -3,6 +3,7 @@ export class ScheduleResponseDto {
   name: string;
   description?: string;
   trainerId: string;
+  memberId?: string;
   scheduledAt: Date;
   duration: number;
   capacity: number;

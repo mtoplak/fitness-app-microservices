@@ -1,9 +1,9 @@
 import { IsNotEmpty, IsString, IsDateString, IsNumber, IsOptional, Min } from 'class-validator';
 
 export class CreateScheduleDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  name: string;
+  name?: string;
 
   @IsOptional()
   @IsString()
@@ -12,6 +12,10 @@ export class CreateScheduleDto {
   @IsNotEmpty()
   @IsString()
   trainerId: string;
+
+  @IsOptional()
+  @IsString()
+  memberId?: string;
 
   @IsNotEmpty()
   @IsDateString()
@@ -22,12 +26,16 @@ export class CreateScheduleDto {
   @Min(15)
   duration: number; // in minutes
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsNumber()
   @Min(1)
-  capacity: number;
+  capacity?: number;
 
   @IsOptional()
   @IsString()
   type?: string; // yoga, pilates, spinning, zumba, etc.
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

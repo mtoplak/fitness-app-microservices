@@ -171,6 +171,21 @@ router.put('/me', authenticateJwt, updateValidation, async (req: AuthRequest, re
   }
 });
 
+// GET /users/:id/exists - Check if user exists (public/internal)
+router.get('/:id/exists', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = await User.exists({ _id: req.params.id });
+    if (!user) {
+      res.status(404).json({ exists: false });
+      return;
+    }
+    res.json({ exists: true });
+  } catch (error: any) {
+    console.error('Check user exists error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // GET /users/:id - Get user by ID (protected)
 router.get('/:id', authenticateJwt, async (req: AuthRequest, res: Response): Promise<void> => {
   try {

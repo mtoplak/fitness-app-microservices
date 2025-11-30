@@ -2,19 +2,25 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Booking, BookingDocument } from './entities/booking.entity';
 import { GroupClass, GroupClassDocument } from './entities/group-class.entity';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import { CreateGroupClassDto } from './dto/create-group-class.dto';
+import { UpdateGroupClassDto } from './dto/update-group-class.dto';
 import {
   BookingResponseDto,
   ParticipantResponseDto,
 } from './dto/booking-response.dto';
+import { UpdateBookingDto } from './dto/update-booking.dto';
 
 @Injectable()
 export class AppService {
+  private readonly logger = new Logger(AppService.name);
+
   constructor(
     @InjectModel(Booking.name)
     private bookingModel: Model<BookingDocument>,
@@ -26,11 +32,94 @@ export class AppService {
     return 'Group Class Booking Service is running!';
   }
 
+  private async validateUser(userId: string): Promise<void> {
+    const userServiceUrl =
+      process.env.USER_SERVICE_URL || 'http://user-service:3001';
+    try {
+      const response = await fetch(`${userServiceUrl}/users/${userId}/exists`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new NotFoundException('User not found');
+        }
+        this.logger.warn(`User validation failed with status ${response.status}`);
+        // Allow validation if service is down? Secure approach: Fail.
+        throw new BadRequestException('Could not validate user');
+      }
+      const data = (await response.json()) as { exists: boolean };
+      if (!data.exists) {
+        throw new NotFoundException('User not found');
+      }
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+      this.logger.error(`Error calling user service: ${error}`);
+      // Fail safe: Assume user exists? No, better to fail safely.
+      throw new BadRequestException('User service unavailable');
+    }
+  }
+
+  // Create Group Class (Admin/Trainer)
+  async createGroupClass(
+    createGroupClassDto: CreateGroupClassDto,
+  ): Promise<any> {
+    // Validate trainer (user)
+    await this.validateUser(createGroupClassDto.trainerId);
+
+    const groupClass = new this.groupClassModel({
+      ...createGroupClassDto,
+      scheduledAt: new Date(createGroupClassDto.scheduledAt),
+      status: 'active',
+      currentParticipants: 0,
+    });
+
+    await groupClass.save();
+    return this.mapToClassResponse(groupClass);
+  }
+
+  // Get Group Class by ID
+  async getGroupClass(id: string): Promise<any> {
+    const groupClass = await this.groupClassModel.findById(id).exec();
+    if (!groupClass) {
+      throw new NotFoundException('Group class not found');
+    }
+    return this.mapToClassResponse(groupClass);
+  }
+
+  // Update Group Class
+  async updateGroupClass(
+    id: string,
+    updateGroupClassDto: UpdateGroupClassDto,
+  ): Promise<any> {
+    const groupClass = await this.groupClassModel.findById(id).exec();
+    if (!groupClass) {
+      throw new NotFoundException('Group class not found');
+    }
+
+    if (updateGroupClassDto.trainerId) {
+      await this.validateUser(updateGroupClassDto.trainerId);
+    }
+
+    Object.assign(groupClass, updateGroupClassDto);
+    if (updateGroupClassDto.scheduledAt) {
+      groupClass.scheduledAt = new Date(updateGroupClassDto.scheduledAt);
+    }
+
+    await groupClass.save();
+    return this.mapToClassResponse(groupClass);
+  }
+
   // Prijava na skupinsko vadbo
   async createBooking(
     createBookingDto: CreateBookingDto,
   ): Promise<BookingResponseDto> {
     const { userId, classId } = createBookingDto;
+
+    // Verify user existence
+    await this.validateUser(userId);
 
     // Preveri, če vadba obstaja
     const groupClass = await this.groupClassModel.findById(classId);
@@ -86,6 +175,58 @@ export class AppService {
       currentParticipants: groupClass.currentParticipants,
     };
   }
+
+  async updateBooking(
+    bookingId: string,
+    updateBookingDto: UpdateBookingDto,
+  ) {
+    const booking = await this.bookingModel.findById(bookingId);
+    
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+    
+    Object.assign(booking, updateBookingDto);
+    
+    await booking.save();
+    
+    return this.mapToBookingResponse(booking);
+
+    
+    
+    
+    
+  }
+
+  // Helper to map group class response
+  private mapToClassResponse(groupClass: GroupClassDocument) {
+    return {
+      id: groupClass._id.toString(),
+      name: groupClass.name,
+      description: groupClass.description,
+      trainerId: groupClass.trainerId,
+      scheduledAt: groupClass.scheduledAt,
+      duration: groupClass.duration,
+      capacity: groupClass.capacity,
+      currentParticipants: groupClass.currentParticipants,
+      status: groupClass.status,
+      createdAt: (groupClass as any).createdAt,
+      updatedAt: (groupClass as any).updatedAt,
+    };
+  }
+
+  private mapToBookingResponse(booking: BookingDocument) {
+    return {
+      id: booking._id.toString(),
+      userId: booking.userId,
+      classId: booking.classId,
+      status: booking.status,
+      bookedAt: booking.bookedAt,
+      createdAt: (booking as any).createdAt,
+      updatedAt: (booking as any).updatedAt,
+    };
+  }
+
 
   // Odjava od skupinske vadbe
   async cancelBooking(bookingId: string): Promise<{ message: string }> {

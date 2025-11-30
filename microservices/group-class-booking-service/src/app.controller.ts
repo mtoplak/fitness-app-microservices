@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Delete,
   Body,
   Param,
@@ -11,10 +12,13 @@ import {
 } from '@nestjs/common';
 import { AppService } from './app.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import { CreateGroupClassDto } from './dto/create-group-class.dto';
+import { UpdateGroupClassDto } from './dto/update-group-class.dto';
 import {
   BookingResponseDto,
   ParticipantResponseDto,
 } from './dto/booking-response.dto';
+import { UpdateBookingDto } from './dto/update-booking.dto';
 
 @Controller()
 export class AppController {
@@ -24,6 +28,29 @@ export class AppController {
   getHello(): string {
     return this.appService.getHello();
   }
+
+  // --- Group Classes ---
+
+  @Post('classes')
+  @HttpCode(HttpStatus.CREATED)
+  async createGroupClass(@Body() createGroupClassDto: CreateGroupClassDto) {
+    return this.appService.createGroupClass(createGroupClassDto);
+  }
+
+  @Get('classes/:id')
+  async getGroupClass(@Param('id') id: string) {
+    return this.appService.getGroupClass(id);
+  }
+
+  @Put('classes/:id')
+  async updateGroupClass(
+    @Param('id') id: string,
+    @Body() updateGroupClassDto: UpdateGroupClassDto,
+  ) {
+    return this.appService.updateGroupClass(id, updateGroupClassDto);
+  }
+
+  // --- Bookings ---
 
   // Prijava na skupinsko vadbo
   @Post('bookings')
@@ -47,6 +74,15 @@ export class AppController {
     @Query('userId') userId: string,
   ): Promise<BookingResponseDto[]> {
     return this.appService.getUserBookings(userId);
+  }
+
+  // Posodobi rezervacijo
+  @Put('bookings/:id')
+  async updateBooking(
+    @Param('id') id: string,
+    @Body() updateBookingDto: UpdateBookingDto,
+  ): Promise<BookingResponseDto> {
+    return this.appService.updateBooking(id, updateBookingDto);
   }
 
   // Seznam vseh udeležencev za določeno vadbo (za trenerja)

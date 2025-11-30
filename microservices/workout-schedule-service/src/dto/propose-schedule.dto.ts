@@ -13,6 +13,10 @@ export class ProposeScheduleDto {
   @IsString()
   trainerId: string;
 
+  @IsOptional()
+  @IsString()
+  memberId?: string;
+
   @IsNotEmpty()
   @IsDateString()
   scheduledAt: string;

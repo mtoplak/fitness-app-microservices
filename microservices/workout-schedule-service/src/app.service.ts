@@ -85,7 +85,7 @@ export class AppService {
 
     if (conflict.hasConflict) {
       throw new ConflictException(
-        `Schedule conflicts with existing schedule: ${conflict.conflictingSchedules[0].name}`,
+        `Schedule conflicts with existing schedule`,
       );
     }
 
@@ -114,7 +114,7 @@ export class AppService {
 
     if (conflict.hasConflict) {
       throw new ConflictException(
-        `Schedule conflicts with existing schedule: ${conflict.conflictingSchedules[0].name}`,
+        `Schedule conflicts with existing schedule`,
       );
     }
 
@@ -278,14 +278,15 @@ export class AppService {
     }
 
     // Če se spreminja čas ali trajanje, preveri prekrivanje
-    if (updateScheduleDto.scheduledAt || updateScheduleDto.duration) {
+    if (updateScheduleDto.scheduledAt || updateScheduleDto.duration || updateScheduleDto.trainerId) {
       const newScheduledAt = updateScheduleDto.scheduledAt
         ? new Date(updateScheduleDto.scheduledAt)
         : schedule.scheduledAt;
       const newDuration = updateScheduleDto.duration || schedule.duration;
+      const newTrainerId = updateScheduleDto.trainerId || schedule.trainerId;
 
       const conflict = await this.checkConflict(
-        schedule.trainerId,
+        newTrainerId,
         newScheduledAt,
         newDuration,
         id,
@@ -344,6 +345,8 @@ export class AppService {
       name: schedule.name,
       description: schedule.description,
       trainerId: schedule.trainerId,
+      // @ts-ignore
+      memberId: schedule.memberId,
       scheduledAt: schedule.scheduledAt,
       duration: schedule.duration,
       capacity: schedule.capacity,
@@ -352,8 +355,8 @@ export class AppService {
       status: schedule.status,
       approvalStatus: schedule.approvalStatus,
       notes: schedule.notes,
-      createdAt: schedule.createdAt,
-      updatedAt: schedule.updatedAt,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
   }
 }

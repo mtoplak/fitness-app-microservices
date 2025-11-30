@@ -5,7 +5,7 @@ export type WorkoutScheduleDocument = WorkoutSchedule & Document;
 
 @Schema({ timestamps: true, collection: 'workout_schedules' })
 export class WorkoutSchedule {
-  @Prop({ required: true })
+  @Prop()
   name: string;
 
   @Prop()
@@ -14,13 +14,16 @@ export class WorkoutSchedule {
   @Prop({ required: true })
   trainerId: string;
 
+  @Prop()
+  memberId: string;
+
   @Prop({ required: true, type: Date })
   scheduledAt: Date;
 
   @Prop({ required: true })
   duration: number; // in minutes
 
-  @Prop({ required: true })
+  @Prop()
   capacity: number;
 
   @Prop({ default: 0 })

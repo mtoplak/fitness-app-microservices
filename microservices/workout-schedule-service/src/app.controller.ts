@@ -61,7 +61,7 @@ export class AppController {
   }
 
   // Preveri prekrivanje terminov
-  @Post('schedules/check-conflict')
+  @Put('schedules/check-conflict')
   async checkConflict(
     @Body() body: { trainerId: string; scheduledAt: string; duration: number; excludeId?: string },
   ): Promise<ConflictCheckDto> {

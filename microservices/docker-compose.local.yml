@@ -1,0 +1,169 @@
+version: '3.8'
+
+services:
+  # User Service
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    ports:
+      - "3001:3001"
+    environment:
+      - MONGODB_URI=mongodb://admin:admin123@mongo-users:27017/fitness-user-db?authSource=admin
+      - JWT_SECRET=local-secret
+      - PORT=3001
+      - CLIENT_ORIGIN=http://localhost:5173
+    depends_on:
+      mongo-users:
+        condition: service_healthy
+    networks:
+      - fitness-local-network
+
+  mongo-users:
+    image: mongo:7
+    container_name: mongo-users
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin123
+      - MONGO_INITDB_DATABASE=fitness-user-db
+    volumes:
+      - mongo-users-local-data:/data/db
+    networks:
+      - fitness-local-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Group Class Booking Service
+  group-class-booking-service:
+    build:
+      context: ./group-class-booking-service
+      dockerfile: Dockerfile
+    container_name: group-class-booking-service
+    ports:
+      - "3005:3005"
+    environment:
+      - MONGODB_URI=mongodb://admin:admin123@mongo-group-bookings:27017/fitness-group-bookings?authSource=admin
+      - NODE_ENV=development
+      - PORT=3005
+      - JWT_SECRET=local-secret
+      - USER_SERVICE_URL=http://user-service:3001
+      - WORKOUT_SCHEDULE_SERVICE_URL=http://workout-schedule-service:3004
+      - SUBSCRIPTION_SERVICE_URL=http://subscription-service:3002
+    depends_on:
+      mongo-group-bookings:
+        condition: service_healthy
+    networks:
+      - fitness-local-network
+
+  mongo-group-bookings:
+    image: mongo:7
+    container_name: mongo-group-bookings
+    ports:
+      - "27018:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin123
+      - MONGO_INITDB_DATABASE=fitness-group-bookings
+    volumes:
+      - mongo-group-bookings-local-data:/data/db
+    networks:
+      - fitness-local-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Workout Schedule Service
+  workout-schedule-service:
+    build:
+      context: ./workout-schedule-service
+      dockerfile: Dockerfile
+    container_name: workout-schedule-service
+    ports:
+      - "3004:3004"
+    environment:
+      - MONGODB_URI=mongodb://admin:admin123@mongo-workout-schedules:27017/fitness-workout-schedules?authSource=admin
+      - NODE_ENV=development
+      - PORT=3004
+      - JWT_SECRET=local-secret
+      - USER_SERVICE_URL=http://user-service:3001
+      - GROUP_CLASS_BOOKING_SERVICE_URL=http://group-class-booking-service:3005
+    depends_on:
+      mongo-workout-schedules:
+        condition: service_healthy
+    networks:
+      - fitness-local-network
+
+  mongo-workout-schedules:
+    image: mongo:7
+    container_name: mongo-workout-schedules
+    ports:
+      - "27019:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin123
+      - MONGO_INITDB_DATABASE=fitness-workout-schedules
+    volumes:
+      - mongo-workout-schedules-local-data:/data/db
+    networks:
+      - fitness-local-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Admin Reporting Service
+  admin-reporting-service:
+    build:
+      context: ./admin-reporting-service
+      dockerfile: Dockerfile
+    container_name: admin-reporting-service
+    ports:
+      - "3006:3006"
+    environment:
+      - MONGODB_URI=mongodb://admin:admin123@mongo-reporting:27017/fitness-reporting-db?authSource=admin
+      - NODE_ENV=development
+      - PORT=3006
+      - JWT_SECRET=local-secret
+    depends_on:
+      mongo-reporting:
+        condition: service_healthy
+    networks:
+      - fitness-local-network
+
+  mongo-reporting:
+    image: mongo:7
+    container_name: mongo-reporting
+    ports:
+      - "27020:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin123
+      - MONGO_INITDB_DATABASE=fitness-reporting-db
+    volumes:
+      - mongo-reporting-local-data:/data/db
+    networks:
+      - fitness-local-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo-users-local-data:
+  mongo-group-bookings-local-data:
+  mongo-workout-schedules-local-data:
+  mongo-reporting-local-data:
+
+networks:
+  fitness-local-network:
+    driver: bridge
