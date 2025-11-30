@@ -158,11 +158,89 @@ services:
       timeout: 5s
       retries: 5
 
+  # Trainer Booking Service
+  trainer-booking-service:
+    build:
+      context: ./trainer-booking-service
+      dockerfile: Dockerfile
+    container_name: trainer-booking-service
+    ports:
+      - "3003:3003"
+    environment:
+      - DatabaseSettings__ConnectionString=mongodb://admin:admin123@mongo-trainer-bookings:27017/fitness_trainer_bookings?authSource=admin
+      - DatabaseSettings__DatabaseName=fitness_trainer_bookings
+      - ASPNETCORE_URLS=http://+:3003
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      mongo-trainer-bookings:
+        condition: service_healthy
+    networks:
+      - fitness-local-network
+
+  mongo-trainer-bookings:
+    image: mongo:7
+    container_name: mongo-trainer-bookings
+    ports:
+      - "27021:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin123
+      - MONGO_INITDB_DATABASE=fitness_trainer_bookings
+    volumes:
+      - mongo-trainer-bookings-local-data:/data/db
+    networks:
+      - fitness-local-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Subscription Service
+  subscription-service:
+    build:
+      context: ./subscription-service
+      dockerfile: Dockerfile
+    container_name: subscription-service
+    ports:
+      - "3002:3002"
+    environment:
+      - DatabaseSettings__ConnectionString=mongodb://admin:admin123@mongo-subscriptions:27017/fitness_subscriptions?authSource=admin
+      - DatabaseSettings__DatabaseName=fitness_subscriptions
+      - ASPNETCORE_URLS=http://+:3002
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      mongo-subscriptions:
+        condition: service_healthy
+    networks:
+      - fitness-local-network
+
+  mongo-subscriptions:
+    image: mongo:7
+    container_name: mongo-subscriptions
+    ports:
+      - "27022:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin123
+      - MONGO_INITDB_DATABASE=fitness_subscriptions
+    volumes:
+      - mongo-subscriptions-local-data:/data/db
+    networks:
+      - fitness-local-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   mongo-users-local-data:
   mongo-group-bookings-local-data:
   mongo-workout-schedules-local-data:
   mongo-reporting-local-data:
+  mongo-trainer-bookings-local-data:
+  mongo-subscriptions-local-data:
 
 networks:
   fitness-local-network:
