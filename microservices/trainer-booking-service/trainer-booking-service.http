@@ -1,0 +1,6 @@
+@trainer_booking_service_HostAddress = http://localhost:5177
+
+GET {{trainer_booking_service_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

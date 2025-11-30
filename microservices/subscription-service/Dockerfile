@@ -1,15 +1,14 @@
-FROM node:20-alpine
-
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
+EXPOSE 8080
 
-COPY package*.json ./
-
-RUN npm install
-
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
 COPY . .
+RUN dotnet restore
+RUN dotnet publish -c Release -o /out
 
-RUN npm run build
-
-EXPOSE 3001
-
-CMD ["npm", "run", "start:prod"]
+FROM base AS final
+WORKDIR /app
+COPY --from=build /out .
+ENTRYPOINT ["dotnet", "subscription-service.dll"]
