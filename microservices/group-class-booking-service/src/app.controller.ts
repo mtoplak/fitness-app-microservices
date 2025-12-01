@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { AppService } from './app.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { CreateGroupClassDto } from './dto/create-group-class.dto';
@@ -20,11 +21,14 @@ import {
 } from './dto/booking-response.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 
+@ApiBearerAuth()
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get()
+  @ApiOperation({ summary: 'Health check' })
+  @ApiResponse({ status: 200, description: 'Service is running' })
   getHello(): string {
     return this.appService.getHello();
   }
@@ -32,17 +36,31 @@ export class AppController {
   // --- Group Classes ---
 
   @Post('classes')
+  @ApiTags('Classes')
+  @ApiOperation({ summary: 'Create a new group class' })
+  @ApiResponse({ status: 201, description: 'Class created successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
   @HttpCode(HttpStatus.CREATED)
   async createGroupClass(@Body() createGroupClassDto: CreateGroupClassDto) {
     return this.appService.createGroupClass(createGroupClassDto);
   }
 
   @Get('classes/:id')
+  @ApiTags('Classes')
+  @ApiOperation({ summary: 'Get group class by ID' })
+  @ApiParam({ name: 'id', description: 'Class ID' })
+  @ApiResponse({ status: 200, description: 'Class found' })
+  @ApiResponse({ status: 404, description: 'Class not found' })
   async getGroupClass(@Param('id') id: string) {
     return this.appService.getGroupClass(id);
   }
 
   @Put('classes/:id')
+  @ApiTags('Classes')
+  @ApiOperation({ summary: 'Update group class' })
+  @ApiParam({ name: 'id', description: 'Class ID' })
+  @ApiResponse({ status: 200, description: 'Class updated' })
+  @ApiResponse({ status: 404, description: 'Class not found' })
   async updateGroupClass(
     @Param('id') id: string,
     @Body() updateGroupClassDto: UpdateGroupClassDto,
@@ -52,8 +70,11 @@ export class AppController {
 
   // --- Bookings ---
 
-  // Prijava na skupinsko vadbo
   @Post('bookings')
+  @ApiTags('Bookings')
+  @ApiOperation({ summary: 'Create a booking for a group class' })
+  @ApiResponse({ status: 201, description: 'Booking created', type: BookingResponseDto })
+  @ApiResponse({ status: 400, description: 'Class is full or invalid data' })
   @HttpCode(HttpStatus.CREATED)
   async createBooking(
     @Body() createBookingDto: CreateBookingDto,
@@ -61,23 +82,33 @@ export class AppController {
     return this.appService.createBooking(createBookingDto);
   }
 
-  // Odjava od skupinske vadbe
   @Delete('bookings/:id')
+  @ApiTags('Bookings')
+  @ApiOperation({ summary: 'Cancel a booking' })
+  @ApiParam({ name: 'id', description: 'Booking ID' })
+  @ApiResponse({ status: 200, description: 'Booking cancelled' })
   @HttpCode(HttpStatus.OK)
   async cancelBooking(@Param('id') id: string): Promise<{ message: string }> {
     return this.appService.cancelBooking(id);
   }
 
-  // Seznam vseh rezervacij uporabnika
   @Get('bookings')
+  @ApiTags('Bookings')
+  @ApiOperation({ summary: 'Get user bookings' })
+  @ApiQuery({ name: 'userId', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'List of bookings', type: [BookingResponseDto] })
   async getUserBookings(
     @Query('userId') userId: string,
   ): Promise<BookingResponseDto[]> {
     return this.appService.getUserBookings(userId);
   }
 
-  // Posodobi rezervacijo
   @Put('bookings/:id')
+  @ApiTags('Bookings')
+  @ApiOperation({ summary: 'Update a booking' })
+  @ApiParam({ name: 'id', description: 'Booking ID' })
+  @ApiResponse({ status: 200, description: 'Booking updated', type: BookingResponseDto })
+  @ApiResponse({ status: 404, description: 'Booking not found' })
   async updateBooking(
     @Param('id') id: string,
     @Body() updateBookingDto: UpdateBookingDto,
@@ -92,14 +123,21 @@ export class AppController {
   }
   // Seznam vseh udeležencev za določeno vadbo (za trenerja)
   @Get('classes/:classId/participants')
+  @ApiTags('Classes')
+  @ApiOperation({ summary: 'Get class participants' })
+  @ApiParam({ name: 'classId', description: 'Class ID' })
+  @ApiResponse({ status: 200, description: 'List of participants', type: [ParticipantResponseDto] })
   async getClassParticipants(
     @Param('classId') classId: string,
   ): Promise<ParticipantResponseDto[]> {
     return this.appService.getClassParticipants(classId);
   }
 
-  // Preveri razpoložljivost (kapaciteto) vadbe
   @Get('classes/:classId/availability')
+  @ApiTags('Classes')
+  @ApiOperation({ summary: 'Check class availability' })
+  @ApiParam({ name: 'classId', description: 'Class ID' })
+  @ApiResponse({ status: 200, description: 'Availability info' })
   async checkClassAvailability(@Param('classId') classId: string): Promise<{
     available: boolean;
     capacity: number;
@@ -108,9 +146,11 @@ export class AppController {
   }> {
     return this.appService.checkClassAvailability(classId);
   }
-  
-  // Pridobi vse prihajajoče vadbe
+
   @Get('classes')
+  @ApiTags('Classes')
+  @ApiOperation({ summary: 'Get all upcoming classes' })
+  @ApiResponse({ status: 200, description: 'List of upcoming classes' })
   async getUpcomingClasses() {
     return this.appService.getUpcomingClasses();
   }

@@ -44,7 +44,38 @@ const sanitizeUser = (user: any) => {
   return sanitized;
 };
 
-// POST /users/register - Register new user
+/**
+ * @swagger
+ * /users/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/RegisterRequest'
+ *     responses:
+ *       201:
+ *         description: User successfully registered
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       409:
+ *         description: User with this email already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post('/register', registerValidation, async (req: Request, res: Response): Promise<void> => {
   try {
     const errors = validationResult(req);
@@ -89,7 +120,30 @@ router.post('/register', registerValidation, async (req: Request, res: Response)
   }
 });
 
-// POST /users/login - Login user
+/**
+ * @swagger
+ * /users/login:
+ *   post:
+ *     summary: Login user
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LoginRequest'
+ *     responses:
+ *       200:
+ *         description: Successfully logged in
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       401:
+ *         description: Invalid credentials
+ *       400:
+ *         description: Validation error
+ */
 router.post('/login', loginValidation, async (req: Request, res: Response): Promise<void> => {
   try {
     const errors = validationResult(req);
@@ -127,7 +181,24 @@ router.post('/login', loginValidation, async (req: Request, res: Response): Prom
   }
 });
 
-// GET /users/me - Get current user profile
+/**
+ * @swagger
+ * /users/me:
+ *   get:
+ *     summary: Get current user profile
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
+ */
 router.get('/me', authenticateJwt, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.user) {
@@ -142,7 +213,32 @@ router.get('/me', authenticateJwt, async (req: AuthRequest, res: Response): Prom
   }
 });
 
-// PUT /users/me - Update current user profile
+/**
+ * @swagger
+ * /users/me:
+ *   put:
+ *     summary: Update current user profile
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateUserRequest'
+ *     responses:
+ *       200:
+ *         description: User profile updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ */
 router.put('/me', authenticateJwt, updateValidation, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const errors = validationResult(req);
@@ -186,7 +282,34 @@ router.get('/:id/exists', async (req: Request, res: Response): Promise<void> => 
   }
 });
 
-// GET /users/:id - Get user by ID (protected)
+/**
+ * @swagger
+ * /users/{id}:
+ *   get:
+ *     summary: Get user by ID
+ *     description: Retrieve a specific user by their ID
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ */
 router.get('/:id', authenticateJwt, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const user = await User.findById(req.params.id);
@@ -203,6 +326,29 @@ router.get('/:id', authenticateJwt, async (req: AuthRequest, res: Response): Pro
   }
 });
 
+/**
+ * @swagger
+ * /users:
+ *   get:
+ *     summary: Get all users
+ *     description: Retrieve a list of all users (admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin access required
+ */
 // GET /users - Get all users (admin only)
 router.get('/', authenticateJwt, requireRole('admin'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -214,6 +360,39 @@ router.get('/', authenticateJwt, requireRole('admin'), async (req: AuthRequest, 
   }
 });
 
+/**
+ * @swagger
+ * /users/role/{role}:
+ *   get:
+ *     summary: Get users by role
+ *     description: Retrieve all users with a specific role (admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: role
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [member, trainer, admin]
+ *         description: User role
+ *     responses:
+ *       200:
+ *         description: List of users with specified role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Invalid role
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin access required
+ */
 // GET /users/role/:role - Get users by role (admin only)
 router.get('/role/:role', authenticateJwt, requireRole('admin'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -232,6 +411,108 @@ router.get('/role/:role', authenticateJwt, requireRole('admin'), async (req: Aut
   }
 });
 
+/**
+ * @swagger
+ * /users/{id}:
+ *   put:
+ *     summary: Update user by ID
+ *     description: Update a specific user's information (admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [member, trainer, admin]
+ *               membershipId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: User updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin access required
+ *       404:
+ *         description: User not found
+ */
+/**
+ * @swagger
+ * /users/{id}:
+ *   put:
+ *     summary: Update user by ID
+ *     description: Update a specific user's information (admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [member, trainer, admin]
+ *     responses:
+ *       200:
+ *         description: User updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin access required
+ *       404:
+ *         description: User not found
+ */
 // PUT /users/:id - Update user by ID (admin only)
 router.put('/:id', authenticateJwt, requireRole('admin'), updateValidation, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -256,6 +537,56 @@ router.put('/:id', authenticateJwt, requireRole('admin'), updateValidation, asyn
   }
 });
 
+/**
+ * @swagger
+ * /users/me:
+ *   delete:
+ *     summary: Delete current user account
+ *     description: Delete the authenticated user's own account
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Account deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Account deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ */
+/**
+ * @swagger
+ * /users/me:
+ *   delete:
+ *     summary: Delete own account
+ *     description: Delete the authenticated user's account
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Account deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Account deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ */
 // DELETE /users/me - Delete own account
 router.delete('/me', authenticateJwt, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -278,6 +609,78 @@ router.delete('/me', authenticateJwt, async (req: AuthRequest, res: Response): P
   }
 });
 
+/**
+ * @swagger
+ * /users/{id}:
+ *   delete:
+ *     summary: Delete user by ID
+ *     description: Delete a specific user by their ID (admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: User deleted successfully
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin access required
+ *       404:
+ *         description: User not found
+ */
+/**
+ * @swagger
+ * /users/{id}:
+ *   delete:
+ *     summary: Delete user by ID
+ *     description: Delete a specific user by their ID (admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: User deleted successfully
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin access required
+ *       404:
+ *         description: User not found
+ */
 // DELETE /users/:id - Delete user by ID (admin only)
 router.delete('/:id', authenticateJwt, requireRole('admin'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {

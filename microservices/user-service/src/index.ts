@@ -2,7 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import swaggerUi from 'swagger-ui-express';
 import userRoutes from './routes/user.routes.js';
+import { swaggerSpec } from './config/swagger.js';
 
 dotenv.config();
 
@@ -15,11 +17,15 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Swagger Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 // Routes
 app.get('/', (req, res) => {
   res.json({ 
     service: 'user-service', 
     version: '1.0.0',
+    documentation: '/api-docs',
     endpoints: {
       health: '/health',
       register: 'POST /users/register',

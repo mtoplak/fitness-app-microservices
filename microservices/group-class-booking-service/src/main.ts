@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -20,8 +21,23 @@ async function bootstrap() {
     }),
   );
 
-  const port = process.env.PORT || 3003;
+  // Swagger setup
+  const config = new DocumentBuilder()
+    .setTitle('Group Class Booking Service API')
+    .setDescription('API for managing group fitness class bookings')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .addServer('http://localhost:3005', 'Development server')
+    .addServer('http://localhost:8000/api', 'Kong Gateway')
+    .addTag('Classes', 'Group class management endpoints')
+    .addTag('Bookings', 'Booking management endpoints')
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api-docs', app, document);
+
+  const port = process.env.PORT || 3005;
   await app.listen(port);
   console.log(`Group Class Booking Service is running on port ${port}`);
+  console.log(`Swagger UI available at: http://localhost:${port}/api-docs`);
 }
 bootstrap();

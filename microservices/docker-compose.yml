@@ -5,17 +5,20 @@ services:
     container_name: kong-database
     environment:
       POSTGRES_USER: kong
-      POSTGRES_DB: kong
       POSTGRES_PASSWORD: kongpass
+      POSTGRES_DB: kong
     volumes:
       - kong-db-data:/var/lib/postgresql/data
     networks:
       - fitness-network
+    ports:
+      - "5432:5432"
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "kong"]
+      test: ["CMD-SHELL", "pg_isready -U kong -d kong"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
   kong-migrations:
     image: kong:3.3.1-alpine
@@ -78,7 +81,10 @@ services:
       DB_PASSWORD: kongpass
       DB_DATABASE: konga
     depends_on:
-      - kong-database
+      kong-database:
+        condition: service_healthy
+      kong:
+        condition: service_healthy
     ports:
       - "1337:1337"
     networks:
