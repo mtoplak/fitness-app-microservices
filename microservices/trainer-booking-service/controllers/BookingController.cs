@@ -5,7 +5,7 @@ using TrainerBookingService.Services;
 namespace TrainerBookingService.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api")]
     [Produces("application/json")]
     public class BookingController : ControllerBase
     {
@@ -16,61 +16,132 @@ namespace TrainerBookingService.Controllers
             _service = service;
         }
 
+        // ========== TRAINERS ==========
+
+        /// <summary>
+        /// Get all trainers
+        /// </summary>
+        [HttpGet("trainers")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public ActionResult<List<TrainerProfile>> GetTrainers() => 
+            Ok(_service.GetAllTrainers());
+
+        /// <summary>
+        /// Get a specific trainer by ID
+        /// </summary>
+        [HttpGet("trainers/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public ActionResult<TrainerProfile> GetTrainer(string id)
+        {
+            var trainer = _service.GetTrainer(id);
+            if (trainer == null) return NotFound();
+            return Ok(trainer);
+        }
+
+        /// <summary>
+        /// Create a new trainer profile
+        /// </summary>
+        [HttpPost("trainers")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        public ActionResult<TrainerProfile> CreateTrainer([FromBody] TrainerProfile trainer)
+        {
+            var created = _service.CreateTrainer(trainer);
+            return CreatedAtAction(nameof(GetTrainer), new { id = created.Id }, created);
+        }
+
+        // ========== BOOKINGS ==========
+
         /// <summary>
         /// Get all trainer bookings
         /// </summary>
-        /// <returns>List of all bookings</returns>
-        /// <response code="200">Returns the list of bookings</response>
-        [HttpGet]
+        [HttpGet("trainer-bookings")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public ActionResult<List<Booking>> Get() => _service.GetAll();
+        public ActionResult<List<Booking>> GetAllBookings() => 
+            Ok(_service.GetAll());
 
         /// <summary>
         /// Get a specific trainer booking by ID
         /// </summary>
-        /// <param name="id">Booking ID</param>
-        /// <returns>The requested booking</returns>
-        /// <response code="200">Returns the booking</response>
-        /// <response code="404">If the booking is not found</response>
-        [HttpGet("{id}")]
+        [HttpGet("trainer-bookings/{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public ActionResult<Booking> Get(string id)
         {
             var booking = _service.Get(id);
             if (booking == null) return NotFound();
-            return booking;
+            return Ok(booking);
         }
+
+        /// <summary>
+        /// Get bookings for a user
+        /// </summary>
+        [HttpGet("trainer-bookings/user/{userId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public ActionResult<List<Booking>> GetByUser(string userId) =>
+            Ok(_service.GetByUserId(userId));
+
+        /// <summary>
+        /// Get upcoming bookings for a user
+        /// </summary>
+        [HttpGet("trainer-bookings/user/{userId}/upcoming")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public ActionResult<List<Booking>> GetUpcoming(string userId) =>
+            Ok(_service.GetUpcoming(userId));
+
+        /// <summary>
+        /// Get bookings for a trainer
+        /// </summary>
+        [HttpGet("trainer-bookings/trainer/{trainerId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public ActionResult<List<Booking>> GetByTrainer(string trainerId) =>
+            Ok(_service.GetByTrainerId(trainerId));
 
         /// <summary>
         /// Create a new trainer booking
         /// </summary>
-        /// <param name="booking">Booking details</param>
-        /// <returns>The created booking</returns>
-        /// <response code="201">Returns the newly created booking</response>
-        /// <response code="400">If the booking data is invalid</response>
-        [HttpPost]
+        [HttpPost("trainer-bookings")]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public ActionResult<Booking> Create([FromBody] Booking booking)
+        public ActionResult<Booking> Create([FromBody] CreateBookingRequest request)
         {
             try
             {
+                var booking = new Booking
+                {
+                    UserId = request.UserId,
+                    TrainerId = request.TrainerId,
+                    StartTime = request.StartTime,
+                    EndTime = request.EndTime ?? request.StartTime.AddHours(1),
+                    Notes = request.Notes,
+                    Status = "confirmed"
+                };
                 var created = _service.Create(booking);
                 return CreatedAtAction(nameof(Get), new { id = created.Id }, created);
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
+        }
+
+        /// <summary>
+        /// Cancel a trainer booking
+        /// </summary>
+        [HttpPost("trainer-bookings/{id}/cancel")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public ActionResult<Booking> Cancel(string id)
+        {
+            var booking = _service.Cancel(id);
+            if (booking == null) return NotFound();
+            return Ok(booking);
         }
 
         /// <summary>
         /// Delete a trainer booking
         /// </summary>
-        /// <param name="id">Booking ID</param>
-        /// <response code="204">Booking deleted successfully</response>
-        [HttpDelete("{id}")]
+        [HttpDelete("trainer-bookings/{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public IActionResult Delete(string id)
         {
@@ -81,9 +152,17 @@ namespace TrainerBookingService.Controllers
         /// <summary>
         /// Health check endpoint
         /// </summary>
-        /// <returns>Service status</returns>
         [HttpGet("/health")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public IActionResult Health() => Ok("Trainer Booking Service is running");
+    }
+
+    public class CreateBookingRequest
+    {
+        public string UserId { get; set; } = null!;
+        public string TrainerId { get; set; } = null!;
+        public DateTime StartTime { get; set; }
+        public DateTime? EndTime { get; set; }
+        public string? Notes { get; set; }
     }
 }

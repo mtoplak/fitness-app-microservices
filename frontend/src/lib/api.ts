@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 export type ApiConfig = {
   baseUrl: string;
 };
@@ -5,8 +7,89 @@ export type ApiConfig = {
 // Kong Gateway URL - all microservices are accessed through Kong
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
+// JWT Error types
+export type JwtErrorCode = 'TOKEN_EXPIRED' | 'INVALID_TOKEN' | 'NO_TOKEN' | 'UNAUTHORIZED';
+
+export interface ApiError extends Error {
+  status?: number;
+  code?: JwtErrorCode;
+}
+
+// Function to check if token is expired locally
+function isTokenExpired(): boolean {
+  const token = localStorage.getItem("auth_token");
+  if (!token) return true;
+  
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const exp = payload.exp;
+    if (!exp) return false;
+    // Check if token expires within the next 30 seconds
+    return Date.now() >= (exp * 1000) - 30000;
+  } catch {
+    return true;
+  }
+}
+
+// Function to get token payload info
+export function getTokenPayload(): { sub: string; name: string; email: string; role: string; iat: number; exp: number } | null {
+  const token = localStorage.getItem("auth_token");
+  if (!token) return null;
+  
+  try {
+    return JSON.parse(atob(token.split('.')[1]));
+  } catch {
+    return null;
+  }
+}
+
+// Handle logout on auth error
+function handleAuthError(code: JwtErrorCode) {
+  localStorage.removeItem("auth_token");
+  
+  // Dispatch custom event for auth context to handle
+  window.dispatchEvent(new CustomEvent('auth:logout', { detail: { code } }));
+  
+  // Show appropriate toast message
+  switch (code) {
+    case 'TOKEN_EXPIRED':
+      toast.error("Seja je potekla", {
+        description: "Prosimo, prijavite se ponovno.",
+        duration: 5000,
+      });
+      break;
+    case 'INVALID_TOKEN':
+      toast.error("Neveljaven žeton", {
+        description: "Vaša seja ni veljavna. Prosimo, prijavite se ponovno.",
+        duration: 5000,
+      });
+      break;
+    case 'NO_TOKEN':
+      toast.error("Ni avtorizacije", {
+        description: "Za dostop do te vsebine se morate prijaviti.",
+        duration: 5000,
+      });
+      break;
+    default:
+      toast.error("Napaka pri avtorizaciji", {
+        description: "Prosimo, prijavite se ponovno.",
+        duration: 5000,
+      });
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("auth_token");
+  
+  // Check if token is expired before making request
+  if (token && isTokenExpired()) {
+    handleAuthError('TOKEN_EXPIRED');
+    throw Object.assign(new Error('Token has expired'), { 
+      status: 401, 
+      code: 'TOKEN_EXPIRED' as JwtErrorCode 
+    });
+  }
+  
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     ...(options.headers || {}),
@@ -18,10 +101,33 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers,
     credentials: "include"
   });
+  
   if (!res.ok) {
-    const message = (await res.json().catch(() => null))?.message || res.statusText;
-    throw new Error(message);
+    const errorData = await res.json().catch(() => ({}));
+    const message = errorData?.message || res.statusText;
+    const code = errorData?.code as JwtErrorCode | undefined;
+    
+    // Handle authentication errors
+    if (res.status === 401) {
+      const authErrorCode = code || 'UNAUTHORIZED';
+      handleAuthError(authErrorCode);
+      throw Object.assign(new Error(message), { 
+        status: 401, 
+        code: authErrorCode 
+      });
+    }
+    
+    // Handle forbidden errors
+    if (res.status === 403) {
+      toast.error("Dostop zavrnjen", {
+        description: "Nimate dovoljenja za to dejanje.",
+        duration: 5000,
+      });
+    }
+    
+    throw Object.assign(new Error(message), { status: res.status, code });
   }
+  
   return (await res.json()) as T;
 }
 

@@ -12,6 +12,7 @@ echo ""
 # Colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Check if running with Docker or locally
@@ -21,26 +22,26 @@ if [ "$1" == "--docker" ]; then
     
     # Seed User Service
     echo "1️⃣  Seeding User Service..."
-    docker compose exec user-service npx tsx src/scripts/seed.ts
+    docker compose -f docker-compose.dev.yml exec user-service npx tsx src/scripts/seed.ts
     
     # Wait a bit for data to be available
     sleep 2
     
-    # Seed Subscription Service
+    # Seed Subscription Service (C# service - run locally)
     echo "2️⃣  Seeding Subscription Service..."
-    docker compose exec subscription-service npx tsx src/scripts/seed.ts
+    cd subscription-service && MONGODB_URI="mongodb://admin:admin123@localhost:27019/fitness-subscriptions?authSource=admin" npx tsx scripts/seed.ts && cd ..
     
-    # Seed Trainer Booking Service
+    # Seed Trainer Booking Service (C# service - run locally)
     echo "3️⃣  Seeding Trainer Booking Service..."
-    docker compose exec trainer-booking-service npx tsx src/scripts/seed.ts
+    cd trainer-booking-service && MONGODB_URI="mongodb://admin:admin123@localhost:27020/fitness_trainer_bookings?authSource=admin" npx tsx scripts/seed.ts && cd ..
     
     # Seed Group Class Booking Service
     echo "4️⃣  Seeding Group Class Booking Service..."
-    docker compose exec group-class-booking-service npx tsx src/scripts/seed.ts
+    docker compose -f docker-compose.dev.yml exec group-class-booking-service npx tsx src/scripts/seed.ts
     
     # Seed Workout Schedule Service
     echo "5️⃣  Seeding Workout Schedule Service..."
-    docker compose exec workout-schedule-service npx tsx src/scripts/seed.ts
+    docker compose -f docker-compose.dev.yml exec workout-schedule-service npx tsx src/scripts/seed.ts
     
 else
     echo -e "${YELLOW}Running locally (make sure MongoDB is accessible)...${NC}"
@@ -53,13 +54,13 @@ else
     # Wait a bit for data to be available
     sleep 2
     
-    # Seed Subscription Service
+    # Seed Subscription Service (C#)
     echo "2️⃣  Seeding Subscription Service..."
-    cd subscription-service && npx tsx src/scripts/seed.ts && cd ..
+    cd subscription-service && MONGODB_URI="mongodb://admin:admin123@localhost:27019/fitness-subscriptions?authSource=admin" npx tsx scripts/seed.ts && cd ..
     
-    # Seed Trainer Booking Service
+    # Seed Trainer Booking Service (C#)
     echo "3️⃣  Seeding Trainer Booking Service..."
-    cd trainer-booking-service && npx tsx src/scripts/seed.ts && cd ..
+    cd trainer-booking-service && MONGODB_URI="mongodb://admin:admin123@localhost:27020/fitness_trainer_bookings?authSource=admin" npx tsx scripts/seed.ts && cd ..
     
     # Seed Group Class Booking Service
     echo "4️⃣  Seeding Group Class Booking Service..."

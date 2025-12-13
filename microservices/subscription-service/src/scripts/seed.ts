@@ -1,66 +1,90 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://admin:admin123@localhost:27019/fitness-subscriptions?authSource=admin';
+const MONGODB_URI =
+  process.env.MONGODB_URI ||
+  'mongodb://admin:admin123@localhost:27019/fitness-subscriptions?authSource=admin';
 
 // Define schemas inline for seed script
-const SubscriptionPlanSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  description: String,
-  price: { type: Number, required: true },
-  durationDays: { type: Number, required: true },
-  accessLevel: { type: Number, default: 1 },
-  isActive: { type: Boolean, default: true },
-  features: { type: [String], default: [] }
-}, { timestamps: true, collection: 'subscription_plans' });
+const SubscriptionPlanSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    description: String,
+    price: { type: Number, required: true },
+    durationDays: { type: Number, required: true },
+    accessLevel: { type: Number, default: 1 },
+    isActive: { type: Boolean, default: true },
+    features: { type: [String], default: [] },
+  },
+  { timestamps: true, collection: 'subscription_plans' },
+);
 
-const SubscriptionSchema = new mongoose.Schema({
-  userId: { type: String, required: true },
-  planId: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan', required: true },
-  status: { type: String, default: 'active' },
-  startDate: { type: Date, required: true },
-  endDate: { type: Date, required: true },
-  autoRenew: { type: Boolean, default: true },
-  cancelledAt: Date,
-  cancelReason: String,
-  lastRenewalDate: Date,
-  renewalCount: { type: Number, default: 0 }
-}, { timestamps: true, collection: 'subscriptions' });
+const SubscriptionSchema = new mongoose.Schema(
+  {
+    userId: { type: String, required: true },
+    planId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SubscriptionPlan',
+      required: true,
+    },
+    status: { type: String, default: 'active' },
+    startDate: { type: Date, required: true },
+    endDate: { type: Date, required: true },
+    autoRenew: { type: Boolean, default: true },
+    cancelledAt: Date,
+    cancelReason: String,
+    lastRenewalDate: Date,
+    renewalCount: { type: Number, default: 0 },
+  },
+  { timestamps: true, collection: 'subscriptions' },
+);
 
-const PaymentSchema = new mongoose.Schema({
-  subscriptionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Subscription', required: true },
-  userId: { type: String, required: true },
-  amount: { type: Number, required: true },
-  paymentMethod: { type: String, default: 'credit_card' },
-  status: { type: String, default: 'completed' },
-  transactionId: String,
-  paymentDate: { type: Date, default: Date.now }
-}, { timestamps: true, collection: 'payments' });
+const PaymentSchema = new mongoose.Schema(
+  {
+    subscriptionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Subscription',
+      required: true,
+    },
+    userId: { type: String, required: true },
+    amount: { type: Number, required: true },
+    paymentMethod: { type: String, default: 'credit_card' },
+    status: { type: String, default: 'completed' },
+    transactionId: String,
+    paymentDate: { type: Date, default: Date.now },
+  },
+  { timestamps: true, collection: 'payments' },
+);
 
-const SubscriptionPlan = mongoose.model('SubscriptionPlan', SubscriptionPlanSchema);
+const SubscriptionPlan = mongoose.model(
+  'SubscriptionPlan',
+  SubscriptionPlanSchema,
+);
 const Subscription = mongoose.model('Subscription', SubscriptionSchema);
 const Payment = mongoose.model('Payment', PaymentSchema);
 
 // Get member user IDs from user-service database
 async function getMemberUserIds(): Promise<string[]> {
-  const userDbUri = process.env.USER_SERVICE_MONGODB_URI || 'mongodb://admin:admin123@localhost:27017/fitness-user-db?authSource=admin';
+  const userDbUri =
+    process.env.USER_SERVICE_MONGODB_URI ||
+    'mongodb://admin:admin123@localhost:27017/fitness-user-db?authSource=admin';
   const userConnection = await mongoose.createConnection(userDbUri);
-  
+
   const UserSchema = new mongoose.Schema({
     email: String,
     role: String,
-    fullName: String
+    fullName: String,
   });
   const User = userConnection.model('User', UserSchema);
-  
+
   const members = await User.find({ role: 'member' }).select('_id').lean();
   await userConnection.close();
-  
-  return members.map(m => m._id.toString());
+
+  return members.map((m) => m._id.toString());
 }
 
 async function seed() {
   console.log('🌱 Seeding Subscription Service...\n');
-  
+
   await mongoose.connect(MONGODB_URI);
   console.log('Connected to MongoDB');
 
@@ -78,7 +102,7 @@ async function seed() {
       price: 29,
       durationDays: 30,
       accessLevel: 1,
-      features: ['Dostop do telovadnice', 'Garderobne omarice', 'Tuši']
+      features: ['Dostop do telovadnice', 'Garderobne omarice', 'Tuši'],
     },
     {
       name: 'Premium Paket',
@@ -86,7 +110,12 @@ async function seed() {
       price: 49,
       durationDays: 30,
       accessLevel: 2,
-      features: ['Vse iz Začetnega paketa', 'Skupinske vadbe', 'Savna', 'Parking']
+      features: [
+        'Vse iz Začetnega paketa',
+        'Skupinske vadbe',
+        'Savna',
+        'Parking',
+      ],
     },
     {
       name: 'Elite Paket',
@@ -94,11 +123,16 @@ async function seed() {
       price: 55,
       durationDays: 30,
       accessLevel: 3,
-      features: ['Vse iz Premium paketa', '2x osebni trening/mesec', 'Prehrana svetovanje', 'VIP garderoba']
-    }
+      features: [
+        'Vse iz Premium paketa',
+        '2x osebni trening/mesec',
+        'Prehrana svetovanje',
+        'VIP garderoba',
+      ],
+    },
   ];
 
-  const plans = [];
+  const plans: any[] = [];
   for (const plan of plansData) {
     const p = await SubscriptionPlan.create(plan);
     plans.push(p);
@@ -111,7 +145,9 @@ async function seed() {
     memberIds = await getMemberUserIds();
     console.log(`\nFound ${memberIds.length} members from user-service`);
   } catch (err) {
-    console.log('\n⚠️  Could not connect to user-service DB. Using mock user IDs.');
+    console.log(
+      '\n⚠️  Could not connect to user-service DB. Using mock user IDs.',
+    );
     // Generate mock user IDs if user-service DB not available
     for (let i = 0; i < 50; i++) {
       memberIds.push(new mongoose.Types.ObjectId().toString());
@@ -126,9 +162,11 @@ async function seed() {
     // Random package assignment (weighted)
     const rand = Math.random();
     let planIdx = 0;
-    if (rand < 0.5) planIdx = 0;      // 50% Začetni
-    else if (rand < 0.85) planIdx = 1; // 35% Premium
-    else planIdx = 2;                  // 15% Elite
+    if (rand < 0.5)
+      planIdx = 0; // 50% Začetni
+    else if (rand < 0.85)
+      planIdx = 1; // 35% Premium
+    else planIdx = 2; // 15% Elite
 
     const plan = plans[planIdx];
 
@@ -147,7 +185,7 @@ async function seed() {
       status: endDate > now ? 'active' : 'expired',
       startDate,
       endDate,
-      autoRenew: Math.random() > 0.2 // 80% auto-renew
+      autoRenew: Math.random() > 0.2, // 80% auto-renew
     });
 
     // Create payment record
@@ -158,7 +196,7 @@ async function seed() {
       paymentMethod: Math.random() > 0.3 ? 'credit_card' : 'paypal',
       status: 'completed',
       transactionId: `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      paymentDate: startDate
+      paymentDate: startDate,
     });
 
     subscriptionCount++;
@@ -168,12 +206,12 @@ async function seed() {
 
   // Show distribution
   const stats = await Subscription.aggregate([
-    { $group: { _id: '$planId', count: { $sum: 1 } } }
+    { $group: { _id: '$planId', count: { $sum: 1 } } },
   ]);
-  
+
   console.log('\n📊 Subscription distribution:');
   for (const stat of stats) {
-    const plan = plans.find(p => p._id.toString() === stat._id.toString());
+    const plan = plans.find((p) => p._id.toString() === stat._id.toString());
     console.log(`  ${plan?.name || 'Unknown'}: ${stat.count} members`);
   }
 

@@ -91,7 +91,7 @@ let AppService = class AppService {
         });
         await subscription.save();
         await this.createPayment(subscription._id.toString(), userId, plan.price, paymentMethod);
-        return this.mapSubscriptionToDto(subscription, plan);
+        return this.mapSubscriptionToDto(subscription, plan ?? undefined);
     }
     async renewSubscription(subscriptionId, renewDto) {
         const subscription = await this.subscriptionModel
@@ -115,7 +115,7 @@ let AppService = class AppService {
         subscription.renewalCount += 1;
         await subscription.save();
         await this.createPayment(subscription._id.toString(), subscription.userId, plan.price, renewDto.paymentMethod);
-        return this.mapSubscriptionToDto(subscription, plan);
+        return this.mapSubscriptionToDto(subscription, plan ?? undefined);
     }
     async cancelSubscription(subscriptionId, cancelDto) {
         const subscription = await this.subscriptionModel
@@ -135,7 +135,7 @@ let AppService = class AppService {
         }
         await subscription.save();
         const plan = await this.planModel.findById(subscription.planId).exec();
-        return this.mapSubscriptionToDto(subscription, plan);
+        return this.mapSubscriptionToDto(subscription, plan ?? undefined);
     }
     async reactivateSubscription(subscriptionId) {
         const subscription = await this.subscriptionModel
@@ -152,11 +152,11 @@ let AppService = class AppService {
         }
         subscription.status = 'active';
         subscription.autoRenew = true;
-        subscription.cancelledAt = null;
-        subscription.cancelReason = null;
+        subscription.cancelledAt = undefined;
+        subscription.cancelReason = undefined;
         await subscription.save();
         const plan = await this.planModel.findById(subscription.planId).exec();
-        return this.mapSubscriptionToDto(subscription, plan);
+        return this.mapSubscriptionToDto(subscription, plan ?? undefined);
     }
     async getUserActiveSubscription(userId) {
         const subscription = await this.subscriptionModel
@@ -170,7 +170,7 @@ let AppService = class AppService {
             return null;
         }
         const plan = await this.planModel.findById(subscription.planId).exec();
-        return this.mapSubscriptionToDto(subscription, plan);
+        return this.mapSubscriptionToDto(subscription, plan ?? undefined);
     }
     async getUserSubscriptions(userId) {
         const subscriptions = await this.subscriptionModel
@@ -179,7 +179,7 @@ let AppService = class AppService {
             .exec();
         const subscriptionsWithPlans = await Promise.all(subscriptions.map(async (subscription) => {
             const plan = await this.planModel.findById(subscription.planId).exec();
-            return this.mapSubscriptionToDto(subscription, plan);
+            return this.mapSubscriptionToDto(subscription, plan ?? undefined);
         }));
         return subscriptionsWithPlans;
     }
@@ -189,7 +189,7 @@ let AppService = class AppService {
             throw new common_1.NotFoundException('Subscription not found');
         }
         const plan = await this.planModel.findById(subscription.planId).exec();
-        return this.mapSubscriptionToDto(subscription, plan);
+        return this.mapSubscriptionToDto(subscription, plan ?? undefined);
     }
     async checkSubscriptionStatus(id) {
         const subscription = await this.subscriptionModel.findById(id).exec();
@@ -248,7 +248,7 @@ let AppService = class AppService {
             .exec();
         const subscriptionsWithPlans = await Promise.all(subscriptions.map(async (subscription) => {
             const plan = await this.planModel.findById(subscription.planId).exec();
-            return this.mapSubscriptionToDto(subscription, plan);
+            return this.mapSubscriptionToDto(subscription, plan ?? undefined);
         }));
         return subscriptionsWithPlans;
     }

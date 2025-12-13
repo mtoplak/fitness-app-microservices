@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://admin:admin123@localhost:27018/fitness-group-bookings?authSource=admin';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://admin:admin123@localhost:27022/fitness_group_class_bookings?authSource=admin';
 
 // Define schemas inline for seed script
 const GroupClassSchema = new mongoose.Schema({
@@ -28,7 +28,7 @@ const Booking = mongoose.model('Booking', BookingSchema);
 
 // Get trainer and member user IDs from user-service database
 async function getUserIds(): Promise<{ trainers: Array<{ id: string; name: string }>; members: string[] }> {
-  const userDbUri = process.env.USER_SERVICE_MONGODB_URI || 'mongodb://admin:admin123@localhost:27017/fitness-user-db?authSource=admin';
+  const userDbUri = process.env.USER_SERVICE_MONGODB_URI || 'mongodb://admin:admin123@localhost:27017/fitness_users?authSource=admin';
   const userConnection = await mongoose.createConnection(userDbUri);
   
   const UserSchema = new mongoose.Schema({
