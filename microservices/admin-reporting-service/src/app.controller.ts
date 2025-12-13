@@ -14,12 +14,16 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery }
 import { AppService } from './app.service';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
+import { Public } from './auth/public.decorator';
+import { Roles } from './auth/roles.decorator';
 
 @ApiBearerAuth()
+@Roles('admin')  // All routes require admin role by default
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
+  @Public()
   @Get()
   @ApiOperation({ summary: 'Health check' })
   @ApiResponse({ status: 200, description: 'Service is running' })

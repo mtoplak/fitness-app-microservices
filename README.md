@@ -46,6 +46,29 @@ cd microservices
 docker compose -f docker-compose.dev.yml up -d
 ```
 
+### 🌱 Seeding Test Data
+
+After starting the services, seed the databases with test data:
+
+```bash
+cd microservices
+
+# Seed all services (local, with MongoDB ports exposed)
+./seed-all.sh
+
+# Or seed individual services
+cd user-service && npm run seed
+cd subscription-service && npm run seed
+cd trainer-booking-service && npm run seed
+cd group-class-booking-service && npm run seed
+cd workout-schedule-service && npm run seed
+```
+
+**Test Credentials after seeding:**
+- Admin: `admin@wiifit.si` / `password123`
+- Trainer: `ana.kovac@wiifit.si` / `password123`
+- Member: `miha.novak0@example.com` / `password123`
+
 ---
 
 ## 🌐 Available Ports (Local/Dev Only)

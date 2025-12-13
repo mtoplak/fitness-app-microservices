@@ -1,5 +1,8 @@
 import { Document, Schema as MongooseSchema } from 'mongoose';
-export type SubscriptionDocument = Subscription & Document;
+export type SubscriptionDocument = Subscription & Document & {
+    createdAt: Date;
+    updatedAt: Date;
+};
 export declare class Subscription {
     userId: string;
     planId: string;

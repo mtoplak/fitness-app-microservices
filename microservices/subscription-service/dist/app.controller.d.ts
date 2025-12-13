@@ -4,6 +4,7 @@ import { RenewSubscriptionDto } from './dto/renew-subscription.dto';
 import { CancelSubscriptionDto } from './dto/cancel-subscription.dto';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { SubscriptionResponseDto, PlanResponseDto, PaymentHistoryDto } from './dto/response.dto';
+import type { RequestUser } from './auth/user.decorator';
 export declare class AppController {
     private readonly appService;
     constructor(appService: AppService);
@@ -12,7 +13,7 @@ export declare class AppController {
     getPlanById(id: string): Promise<PlanResponseDto>;
     createPlan(createPlanDto: CreatePlanDto): Promise<PlanResponseDto>;
     updatePlan(id: string, updatePlanDto: Partial<CreatePlanDto>): Promise<PlanResponseDto>;
-    purchaseSubscription(purchaseDto: PurchaseSubscriptionDto): Promise<SubscriptionResponseDto>;
+    purchaseSubscription(purchaseDto: PurchaseSubscriptionDto, user: RequestUser): Promise<SubscriptionResponseDto>;
     getUserSubscription(userId: string): Promise<SubscriptionResponseDto | null>;
     getUserSubscriptions(userId: string): Promise<SubscriptionResponseDto[]>;
     getSubscriptionById(id: string): Promise<SubscriptionResponseDto>;

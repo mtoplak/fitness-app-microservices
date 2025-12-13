@@ -35,19 +35,22 @@ builder.Services.AddSwaggerGen(options =>
     }
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", p =>
+        p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+});
+
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+app.UseCors("AllowAll");
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Trainer Booking Service API v1");
-        c.RoutePrefix = "api-docs";
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Trainer Booking Service API v1");
+    c.RoutePrefix = "api-docs";
+});
 
-app.UseHttpsRedirection();
 app.MapControllers();
 
 Console.WriteLine($"Trainer Booking Service running on port {builder.Configuration["PORT"] ?? "3003"}");

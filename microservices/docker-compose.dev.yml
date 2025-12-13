@@ -159,12 +159,13 @@ services:
     ports:
       - "3002:3002"
     environment:
-      MONGODB_URI: mongodb://admin:admin123@mongo-subscriptions:27017/fitness_subscriptions?authSource=admin
+      MONGODB_URI: mongodb://admin:admin123@mongo-subscriptions:27017/fitness-subscriptions?authSource=admin
+      DatabaseSettings__ConnectionString: mongodb://admin:admin123@mongo-subscriptions:27017/fitness-subscriptions?authSource=admin
+      DatabaseSettings__DatabaseName: fitness-subscriptions
       JWT_SECRET: dev-secret-key
       PORT: 3002
       ASPNETCORE_URLS: http://+:3002
       ASPNETCORE_ENVIRONMENT: Development
-      NODE_ENV: development
     depends_on:
       mongo-subscriptions:
         condition: service_healthy
@@ -201,6 +202,7 @@ services:
     environment:
       DatabaseSettings__ConnectionString: mongodb://admin:admin123@mongo-trainer-bookings:27017/fitness_trainer_bookings?authSource=admin
       DatabaseSettings__DatabaseName: fitness_trainer_bookings
+      MONGODB_URI: mongodb://admin:admin123@mongo-trainer-bookings:27017/fitness_trainer_bookings?authSource=admin
       ASPNETCORE_URLS: http://+:3003
       ASPNETCORE_ENVIRONMENT: Development
     depends_on:

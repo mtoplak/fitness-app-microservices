@@ -20,11 +20,16 @@ import {
   PlanResponseDto,
   PaymentHistoryDto,
 } from './dto/response.dto';
+import { Public } from './auth/public.decorator';
+import { Roles } from './auth/roles.decorator';
+import { CurrentUser } from './auth/user.decorator';
+import type { RequestUser } from './auth/user.decorator';
 
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
+  @Public()
   @Get()
   getHello(): string {
     return this.appService.getHello();
@@ -33,18 +38,21 @@ export class AppController {
   // ========== SUBSCRIPTION PLANS ==========
 
   // Pridobi vse pakete naročnin
+  @Public()
   @Get('plans')
   async getPlans(@Query('activeOnly') activeOnly?: string): Promise<PlanResponseDto[]> {
     return this.appService.getPlans(activeOnly === 'true');
   }
 
   // Pridobi posamezen paket
+  @Public()
   @Get('plans/:id')
   async getPlanById(@Param('id') id: string): Promise<PlanResponseDto> {
     return this.appService.getPlanById(id);
   }
 
   // Ustvari nov paket (admin)
+  @Roles('admin')
   @Post('plans')
   @HttpCode(HttpStatus.CREATED)
   async createPlan(@Body() createPlanDto: CreatePlanDto): Promise<PlanResponseDto> {
@@ -52,6 +60,7 @@ export class AppController {
   }
 
   // Posodobi paket (admin)
+  @Roles('admin')
   @Put('plans/:id')
   async updatePlan(
     @Param('id') id: string,
@@ -67,7 +76,12 @@ export class AppController {
   @HttpCode(HttpStatus.CREATED)
   async purchaseSubscription(
     @Body() purchaseDto: PurchaseSubscriptionDto,
+    @CurrentUser() user: RequestUser,
   ): Promise<SubscriptionResponseDto> {
+    // Use authenticated user's ID if not provided
+    if (!purchaseDto.userId && user) {
+      purchaseDto.userId = user.userId;
+    }
     return this.appService.purchaseSubscription(purchaseDto);
   }
 
@@ -151,6 +165,7 @@ export class AppController {
   }
 
   // Vse naročnine, ki potečejo kmalu (admin)
+  @Roles('admin')
   @Get('admin/expiring-subscriptions')
   async getExpiringSubscriptions(
     @Query('days') days: string = '7',

@@ -18,11 +18,15 @@ import {
   TrainerResponseDto,
   AvailabilitySlot,
 } from './dto/response.dto';
+import { Public } from './auth/public.decorator';
+import { Roles } from './auth/roles.decorator';
+import { CurrentUser, RequestUser } from './auth/user.decorator';
 
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
+  @Public()
   @Get()
   getHello(): string {
     return this.appService.getHello();
@@ -31,6 +35,7 @@ export class AppController {
   // ========== TRAINERS ==========
 
   // Prikaz vseh trenerjev
+  @Public()
   @Get('trainers')
   async getTrainers(
     @Query('activeOnly') activeOnly?: string,
@@ -39,12 +44,14 @@ export class AppController {
   }
 
   // Pridobi posameznega trenerja
+  @Public()
   @Get('trainers/:id')
   async getTrainerById(@Param('id') id: string): Promise<TrainerResponseDto> {
     return this.appService.getTrainerById(id);
   }
 
   // Ustvari trenerja (admin)
+  @Roles('admin')
   @Post('trainers')
   @HttpCode(HttpStatus.CREATED)
   async createTrainer(
@@ -54,6 +61,7 @@ export class AppController {
   }
 
   // Posodobi trenerja (admin)
+  @Roles('admin')
   @Post('trainers/:id')
   async updateTrainer(
     @Param('id') id: string,
@@ -65,6 +73,7 @@ export class AppController {
   // ========== AVAILABILITY ==========
 
   // Nastavi razpoložljivost trenerja
+  @Roles('admin', 'trainer')
   @Post('trainers/:id/availability')
   async setTrainerAvailability(
     @Param('id') trainerId: string,
@@ -74,6 +83,7 @@ export class AppController {
   }
 
   // Pridobi razpoložljive termine trenerja
+  @Public()
   @Get('trainers/:id/availability')
   async getTrainerAvailability(
     @Param('id') trainerId: string,
@@ -94,7 +104,12 @@ export class AppController {
   @HttpCode(HttpStatus.CREATED)
   async createBooking(
     @Body() createBookingDto: CreateBookingDto,
+    @CurrentUser() user: RequestUser,
   ): Promise<BookingResponseDto> {
+    // Use authenticated user's ID if not provided
+    if (!createBookingDto.userId && user) {
+      createBookingDto.userId = user.userId;
+    }
     return this.appService.createBooking(createBookingDto);
   }
 
@@ -108,6 +123,7 @@ export class AppController {
   }
 
   // Pridobi rezervacije trenerja
+  @Roles('admin', 'trainer')
   @Get('bookings/trainer/:trainerId')
   async getTrainerBookings(
     @Param('trainerId') trainerId: string,
@@ -138,6 +154,7 @@ export class AppController {
   }
 
   // Označi rezervacijo kot zaključeno (trener)
+  @Roles('admin', 'trainer')
   @Post('bookings/:id/complete')
   async completeBooking(@Param('id') id: string): Promise<BookingResponseDto> {
     return this.appService.completeBooking(id);

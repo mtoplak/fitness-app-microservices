@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import userRoutes from './routes/user.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 import { swaggerSpec } from './config/swagger.js';
 
 dotenv.config();
@@ -36,7 +37,8 @@ app.get('/', (req, res) => {
   });
 });
 
-app.use('/users', userRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

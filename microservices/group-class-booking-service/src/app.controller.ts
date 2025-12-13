@@ -20,12 +20,16 @@ import {
   ParticipantResponseDto,
 } from './dto/booking-response.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
+import { Public } from './auth/public.decorator';
+import { Roles } from './auth/roles.decorator';
+import { CurrentUser, RequestUser } from './auth/user.decorator';
 
 @ApiBearerAuth()
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
+  @Public()
   @Get()
   @ApiOperation({ summary: 'Health check' })
   @ApiResponse({ status: 200, description: 'Service is running' })
@@ -35,6 +39,7 @@ export class AppController {
 
   // --- Group Classes ---
 
+  @Roles('admin', 'trainer')
   @Post('classes')
   @ApiTags('Classes')
   @ApiOperation({ summary: 'Create a new group class' })
@@ -45,6 +50,7 @@ export class AppController {
     return this.appService.createGroupClass(createGroupClassDto);
   }
 
+  @Public()
   @Get('classes/:id')
   @ApiTags('Classes')
   @ApiOperation({ summary: 'Get group class by ID' })
@@ -55,6 +61,7 @@ export class AppController {
     return this.appService.getGroupClass(id);
   }
 
+  @Roles('admin', 'trainer')
   @Put('classes/:id')
   @ApiTags('Classes')
   @ApiOperation({ summary: 'Update group class' })
@@ -78,7 +85,12 @@ export class AppController {
   @HttpCode(HttpStatus.CREATED)
   async createBooking(
     @Body() createBookingDto: CreateBookingDto,
+    @CurrentUser() user: RequestUser,
   ): Promise<BookingResponseDto> {
+    // Use authenticated user's ID if not provided
+    if (!createBookingDto.userId && user) {
+      createBookingDto.userId = user.userId;
+    }
     return this.appService.createBooking(createBookingDto);
   }
 
@@ -95,12 +107,15 @@ export class AppController {
   @Get('bookings')
   @ApiTags('Bookings')
   @ApiOperation({ summary: 'Get user bookings' })
-  @ApiQuery({ name: 'userId', description: 'User ID' })
+  @ApiQuery({ name: 'userId', description: 'User ID', required: false })
   @ApiResponse({ status: 200, description: 'List of bookings', type: [BookingResponseDto] })
   async getUserBookings(
     @Query('userId') userId: string,
+    @CurrentUser() user: RequestUser,
   ): Promise<BookingResponseDto[]> {
-    return this.appService.getUserBookings(userId);
+    // Use authenticated user's ID if not provided
+    const targetUserId = userId || user?.userId;
+    return this.appService.getUserBookings(targetUserId);
   }
 
   @Put('bookings/:id')
@@ -115,13 +130,17 @@ export class AppController {
   ): Promise<BookingResponseDto> {
     return this.appService.updateBooking(id, updateBookingDto);
   }
+  
   // Delete class
+  @Roles('admin', 'trainer')
   @Delete('classes/:id')
   @HttpCode(HttpStatus.OK)
   async deleteClass(@Param('id') id: string): Promise<{ message: string }> {
     return this.appService.deleteClass(id);
   }
+  
   // Seznam vseh udeležencev za določeno vadbo (za trenerja)
+  @Roles('admin', 'trainer')
   @Get('classes/:classId/participants')
   @ApiTags('Classes')
   @ApiOperation({ summary: 'Get class participants' })
@@ -133,6 +152,7 @@ export class AppController {
     return this.appService.getClassParticipants(classId);
   }
 
+  @Public()
   @Get('classes/:classId/availability')
   @ApiTags('Classes')
   @ApiOperation({ summary: 'Check class availability' })
@@ -147,6 +167,7 @@ export class AppController {
     return this.appService.checkClassAvailability(classId);
   }
 
+  @Public()
   @Get('classes')
   @ApiTags('Classes')
   @ApiOperation({ summary: 'Get all upcoming classes' })

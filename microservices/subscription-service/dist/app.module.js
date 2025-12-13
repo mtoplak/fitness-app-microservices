@@ -11,11 +11,14 @@ const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const config_1 = require("@nestjs/config");
 const schedule_1 = require("@nestjs/schedule");
+const core_1 = require("@nestjs/core");
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
 const subscription_schema_1 = require("./schemas/subscription.schema");
 const subscription_plan_schema_1 = require("./schemas/subscription-plan.schema");
 const payment_schema_1 = require("./schemas/payment.schema");
+const jwt_guard_1 = require("./auth/jwt.guard");
+const roles_guard_1 = require("./auth/roles.guard");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -35,7 +38,17 @@ exports.AppModule = AppModule = __decorate([
             ]),
         ],
         controllers: [app_controller_1.AppController],
-        providers: [app_service_1.AppService],
+        providers: [
+            app_service_1.AppService,
+            {
+                provide: core_1.APP_GUARD,
+                useClass: jwt_guard_1.JwtAuthGuard,
+            },
+            {
+                provide: core_1.APP_GUARD,
+                useClass: roles_guard_1.RolesGuard,
+            },
+        ],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map

@@ -32,9 +32,18 @@ const updateValidation = [
   body('membershipId').optional().trim(),
 ];
 
-// Helper function to generate JWT
-const generateToken = (userId: string, email: string, role: string): string => {
-  return jwt.sign({ sub: userId, email, role }, JWT_SECRET, { expiresIn: '7d' });
+// Helper function to generate JWT with required claims: sub, name, iat, exp
+const generateToken = (userId: string, email: string, role: string, name: string): string => {
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    sub: userId,       // Subject (user ID)
+    name: name,        // User's full name
+    email: email,      // User's email
+    role: role,        // User's role
+    iat: now,          // Issued at (automatically added by jwt.sign, but explicit for clarity)
+  };
+  // expiresIn adds 'exp' claim automatically
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 };
 
 // Helper function to sanitize user (remove password)
@@ -107,8 +116,8 @@ router.post('/register', registerValidation, async (req: Request, res: Response)
       role: role || 'member',
     });
 
-    // Generate token
-    const token = generateToken(user._id.toString(), user.email, user.role);
+    // Generate token with name claim
+    const token = generateToken(user._id.toString(), user.email, user.role, user.fullName);
 
     res.status(201).json({
       user: sanitizeUser(user),
@@ -168,8 +177,8 @@ router.post('/login', loginValidation, async (req: Request, res: Response): Prom
       return;
     }
 
-    // Generate token
-    const token = generateToken(user._id.toString(), user.email, user.role);
+    // Generate token with name claim
+    const token = generateToken(user._id.toString(), user.email, user.role, user.fullName);
 
     res.json({
       user: sanitizeUser(user),
@@ -695,6 +704,88 @@ router.delete('/:id', authenticateJwt, requireRole('admin'), async (req: AuthReq
   } catch (error: any) {
     console.error('Delete user error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+/**
+ * @swagger
+ * /users/verify-token:
+ *   post:
+ *     summary: Verify JWT token
+ *     description: Verify a JWT token and return the decoded payload. Used by other microservices for token validation.
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: JWT token to verify
+ *     responses:
+ *       200:
+ *         description: Token is valid
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 valid:
+ *                   type: boolean
+ *                 payload:
+ *                   type: object
+ *                   properties:
+ *                     sub:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     role:
+ *                       type: string
+ *                     iat:
+ *                       type: number
+ *                     exp:
+ *                       type: number
+ *       401:
+ *         description: Invalid or expired token
+ */
+router.post('/verify-token', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      res.status(400).json({ valid: false, message: 'Token is required' });
+      return;
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      sub: string;
+      name: string;
+      email: string;
+      role: string;
+      iat: number;
+      exp: number;
+    };
+
+    res.json({
+      valid: true,
+      payload: decoded,
+    });
+  } catch (error: any) {
+    if (error.name === 'TokenExpiredError') {
+      res.status(401).json({ valid: false, message: 'Token has expired', code: 'TOKEN_EXPIRED' });
+      return;
+    }
+    if (error.name === 'JsonWebTokenError') {
+      res.status(401).json({ valid: false, message: 'Invalid token', code: 'INVALID_TOKEN' });
+      return;
+    }
+    res.status(401).json({ valid: false, message: 'Token verification failed' });
   }
 });
 

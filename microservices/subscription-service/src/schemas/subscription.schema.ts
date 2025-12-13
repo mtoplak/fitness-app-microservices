@@ -2,7 +2,10 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { ApiProperty } from '@nestjs/swagger';
 import { Document, Schema as MongooseSchema } from 'mongoose';
 
-export type SubscriptionDocument = Subscription & Document;
+export type SubscriptionDocument = Subscription & Document & {
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 @Schema({ timestamps: true, collection: 'subscriptions' })
 export class Subscription {
