@@ -129,7 +129,7 @@ export class AppService {
       paymentMethod,
     );
 
-    return this.mapSubscriptionToDto(subscription, plan);
+    return this.mapSubscriptionToDto(subscription, plan ?? undefined);
   }
 
   async renewSubscription(
@@ -176,7 +176,7 @@ export class AppService {
       renewDto.paymentMethod,
     );
 
-    return this.mapSubscriptionToDto(subscription, plan);
+    return this.mapSubscriptionToDto(subscription, plan ?? undefined);
   }
 
   async cancelSubscription(
@@ -205,7 +205,7 @@ export class AppService {
     await subscription.save();
 
     const plan = await this.planModel.findById(subscription.planId).exec();
-    return this.mapSubscriptionToDto(subscription, plan);
+    return this.mapSubscriptionToDto(subscription, plan ?? undefined);
   }
 
   async reactivateSubscription(
@@ -232,13 +232,13 @@ export class AppService {
 
     subscription.status = 'active';
     subscription.autoRenew = true;
-    subscription.cancelledAt = null;
-    subscription.cancelReason = null;
+    subscription.cancelledAt = undefined as unknown as Date;
+    subscription.cancelReason = undefined as unknown as string;
 
     await subscription.save();
 
     const plan = await this.planModel.findById(subscription.planId).exec();
-    return this.mapSubscriptionToDto(subscription, plan);
+    return this.mapSubscriptionToDto(subscription, plan ?? undefined);
   }
 
   async getUserActiveSubscription(
@@ -257,7 +257,7 @@ export class AppService {
     }
 
     const plan = await this.planModel.findById(subscription.planId).exec();
-    return this.mapSubscriptionToDto(subscription, plan);
+    return this.mapSubscriptionToDto(subscription, plan ?? undefined);
   }
 
   async getUserSubscriptions(userId: string): Promise<SubscriptionResponseDto[]> {
@@ -269,7 +269,7 @@ export class AppService {
     const subscriptionsWithPlans = await Promise.all(
       subscriptions.map(async (subscription) => {
         const plan = await this.planModel.findById(subscription.planId).exec();
-        return this.mapSubscriptionToDto(subscription, plan);
+        return this.mapSubscriptionToDto(subscription, plan ?? undefined);
       }),
     );
 
@@ -283,7 +283,7 @@ export class AppService {
     }
 
     const plan = await this.planModel.findById(subscription.planId).exec();
-    return this.mapSubscriptionToDto(subscription, plan);
+    return this.mapSubscriptionToDto(subscription, plan ?? undefined);
   }
 
   async checkSubscriptionStatus(id: string): Promise<{
@@ -373,7 +373,7 @@ export class AppService {
     const subscriptionsWithPlans = await Promise.all(
       subscriptions.map(async (subscription) => {
         const plan = await this.planModel.findById(subscription.planId).exec();
-        return this.mapSubscriptionToDto(subscription, plan);
+        return this.mapSubscriptionToDto(subscription, plan ?? undefined);
       }),
     );
 

@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SubscriptionSchema = exports.Subscription = void 0;
 const mongoose_1 = require("@nestjs/mongoose");
+const swagger_1 = require("@nestjs/swagger");
 const mongoose_2 = require("mongoose");
 let Subscription = class Subscription {
     userId;
@@ -26,42 +27,56 @@ let Subscription = class Subscription {
 };
 exports.Subscription = Subscription;
 __decorate([
+    (0, swagger_1.ApiProperty)({ description: 'User ID who owns this subscription' }),
     (0, mongoose_1.Prop)({ required: true }),
     __metadata("design:type", String)
 ], Subscription.prototype, "userId", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Subscription plan ID' }),
     (0, mongoose_1.Prop)({ required: true, type: mongoose_2.Schema.Types.ObjectId, ref: 'SubscriptionPlan' }),
     __metadata("design:type", String)
 ], Subscription.prototype, "planId", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({
+        description: 'Subscription status',
+        enum: ['active', 'expired', 'cancelled', 'pending'],
+        default: 'active'
+    }),
     (0, mongoose_1.Prop)({ required: true, default: 'active' }),
     __metadata("design:type", String)
 ], Subscription.prototype, "status", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Subscription start date' }),
     (0, mongoose_1.Prop)({ required: true, type: Date }),
     __metadata("design:type", Date)
 ], Subscription.prototype, "startDate", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Subscription end date' }),
     (0, mongoose_1.Prop)({ required: true, type: Date }),
     __metadata("design:type", Date)
 ], Subscription.prototype, "endDate", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Auto-renew enabled', default: true }),
     (0, mongoose_1.Prop)({ default: true }),
     __metadata("design:type", Boolean)
 ], Subscription.prototype, "autoRenew", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ required: false, description: 'Cancellation date' }),
     (0, mongoose_1.Prop)({ type: Date }),
     __metadata("design:type", Date)
 ], Subscription.prototype, "cancelledAt", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ required: false, description: 'Reason for cancellation' }),
     (0, mongoose_1.Prop)(),
     __metadata("design:type", String)
 ], Subscription.prototype, "cancelReason", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ required: false, description: 'Last renewal date' }),
     (0, mongoose_1.Prop)({ type: Date }),
     __metadata("design:type", Date)
 ], Subscription.prototype, "lastRenewalDate", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Number of renewals', default: 0 }),
     (0, mongoose_1.Prop)({ default: 0 }),
     __metadata("design:type", Number)
 ], Subscription.prototype, "renewalCount", void 0);

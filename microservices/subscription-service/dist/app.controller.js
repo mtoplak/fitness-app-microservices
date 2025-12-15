@@ -19,6 +19,9 @@ const purchase_subscription_dto_1 = require("./dto/purchase-subscription.dto");
 const renew_subscription_dto_1 = require("./dto/renew-subscription.dto");
 const cancel_subscription_dto_1 = require("./dto/cancel-subscription.dto");
 const create_plan_dto_1 = require("./dto/create-plan.dto");
+const public_decorator_1 = require("./auth/public.decorator");
+const roles_decorator_1 = require("./auth/roles.decorator");
+const user_decorator_1 = require("./auth/user.decorator");
 let AppController = class AppController {
     appService;
     constructor(appService) {
@@ -39,7 +42,10 @@ let AppController = class AppController {
     async updatePlan(id, updatePlanDto) {
         return this.appService.updatePlan(id, updatePlanDto);
     }
-    async purchaseSubscription(purchaseDto) {
+    async purchaseSubscription(purchaseDto, user) {
+        if (!purchaseDto.userId && user) {
+            purchaseDto.userId = user.userId;
+        }
         return this.appService.purchaseSubscription(purchaseDto);
     }
     async getUserSubscription(userId) {
@@ -75,12 +81,14 @@ let AppController = class AppController {
 };
 exports.AppController = AppController;
 __decorate([
+    (0, public_decorator_1.Public)(),
     (0, common_1.Get)(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", String)
 ], AppController.prototype, "getHello", null);
 __decorate([
+    (0, public_decorator_1.Public)(),
     (0, common_1.Get)('plans'),
     __param(0, (0, common_1.Query)('activeOnly')),
     __metadata("design:type", Function),
@@ -88,6 +96,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AppController.prototype, "getPlans", null);
 __decorate([
+    (0, public_decorator_1.Public)(),
     (0, common_1.Get)('plans/:id'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -95,6 +104,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AppController.prototype, "getPlanById", null);
 __decorate([
+    (0, roles_decorator_1.Roles)('admin'),
     (0, common_1.Post)('plans'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Body)()),
@@ -103,6 +113,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AppController.prototype, "createPlan", null);
 __decorate([
+    (0, roles_decorator_1.Roles)('admin'),
     (0, common_1.Put)('plans/:id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
@@ -114,8 +125,9 @@ __decorate([
     (0, common_1.Post)('subscriptions'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [purchase_subscription_dto_1.PurchaseSubscriptionDto]),
+    __metadata("design:paramtypes", [purchase_subscription_dto_1.PurchaseSubscriptionDto, Object]),
     __metadata("design:returntype", Promise)
 ], AppController.prototype, "purchaseSubscription", null);
 __decorate([
@@ -184,6 +196,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AppController.prototype, "getSubscriptionPaymentHistory", null);
 __decorate([
+    (0, roles_decorator_1.Roles)('admin'),
     (0, common_1.Get)('admin/expiring-subscriptions'),
     __param(0, (0, common_1.Query)('days')),
     __metadata("design:type", Function),

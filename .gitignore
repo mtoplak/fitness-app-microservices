@@ -1,2 +1,25 @@
 node_modules
 .env
+
+# Build outputs
+dist
+build
+out
+
+# C# build outputs
+bin
+obj
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
