@@ -1,8 +1,16 @@
 using TrainerBookingService.Models;
 using TrainerBookingService.Services;
+using TrainerBookingService.Logging;
+using TrainerBookingService.Middleware;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure RabbitMQ Logger
+var rabbitMqUrl = builder.Configuration["RABBITMQ_URL"] ?? "amqp://localhost:5672";
+var rabbitMqExchange = builder.Configuration["RABBITMQ_EXCHANGE"] ?? "fitness-logs-exchange";
+var logger = new RabbitMQLogger(rabbitMqUrl, rabbitMqExchange, "trainer-booking-service");
+builder.Services.AddSingleton(logger);
 
 // Bindamo DatabaseSettings iz appsettings.json
 builder.Services.Configure<TrainerBookingDatabaseSettings>(
@@ -44,6 +52,13 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 app.UseCors("AllowAll");
+
+// Add Correlation ID middleware (must be before logging)
+app.UseCorrelationId();
+
+// Add Logging middleware
+app.UseRabbitMQLogging();
+
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {

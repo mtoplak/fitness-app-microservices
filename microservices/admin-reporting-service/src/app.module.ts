@@ -1,10 +1,13 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { Report, ReportSchema } from './schemas/report.schema';
+import { LoggerService } from './services/logger.service';
+import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
+import { LoggingMiddleware } from './middleware/logging.middleware';
 import { JwtAuthGuard } from './auth/jwt.guard';
 import { RolesGuard } from './auth/roles.guard';
 
@@ -33,6 +36,16 @@ import { RolesGuard } from './auth/roles.guard';
       provide: APP_GUARD,
       useClass: RolesGuard,
     },
+    {
+      provide: LoggerService,
+      useValue: new LoggerService('admin-reporting-service'),
+    },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(CorrelationIdMiddleware, LoggingMiddleware)
+      .forRoutes('*');
+  }
+}

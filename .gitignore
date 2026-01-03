@@ -1,25 +1,38 @@
 node_modules
 .env
 
+# Logs
+logs
+*.log
+
 # Build outputs
 dist
-build
-out
+dist/
+*/dist
+*/dist/
+**/dist
+**/dist/
+/build
+/.tmp
+build/
+*/build
+*/build/
 
-# C# build outputs
-bin
-obj
+# .NET build outputs
+bin/
+obj/
+*/bin/
+*/obj/
+**/bin/
+**/obj/
 
-# Logs
-*.log
-npm-debug.log*
-
-# IDE
-.idea
-.vscode
+# IDEs
+.vscode/
+.idea/
 *.swp
 *.swo
+*~
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db

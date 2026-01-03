@@ -5,7 +5,7 @@ using SubscriptionService.Services;
 namespace SubscriptionService.Controllers
 {
     [ApiController]
-    [Route("api")]
+    [Route("api/[controller]")]
     [Produces("application/json")]
     public class SubscriptionController : ControllerBase
     {
@@ -16,63 +16,12 @@ namespace SubscriptionService.Controllers
             _service = service;
         }
 
-        // ========== PLANS ==========
-
-        /// <summary>
-        /// Get all subscription plans
-        /// </summary>
-        /// <param name="activeOnly">Filter only active plans</param>
-        /// <returns>List of plans</returns>
-        [HttpGet("plans")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetPlans([FromQuery] bool activeOnly = false) =>
-            Ok(await _service.GetAllPlans(activeOnly));
-
-        /// <summary>
-        /// Get a specific plan by ID
-        /// </summary>
-        [HttpGet("plans/{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetPlan(string id)
-        {
-            var plan = await _service.GetPlan(id);
-            if (plan == null) return NotFound();
-            return Ok(plan);
-        }
-
-        /// <summary>
-        /// Create a new plan (admin only)
-        /// </summary>
-        [HttpPost("plans")]
-        [ProducesResponseType(StatusCodes.Status201Created)]
-        public async Task<IActionResult> CreatePlan([FromBody] Plan plan)
-        {
-            await _service.CreatePlan(plan);
-            return CreatedAtAction(nameof(GetPlan), new { id = plan.Id }, plan);
-        }
-
-        /// <summary>
-        /// Update a plan (admin only)
-        /// </summary>
-        [HttpPut("plans/{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> UpdatePlan(string id, [FromBody] Plan plan)
-        {
-            var exists = await _service.GetPlan(id);
-            if (exists == null) return NotFound();
-            plan.Id = id;
-            await _service.UpdatePlan(id, plan);
-            return NoContent();
-        }
-
-        // ========== SUBSCRIPTIONS ==========
-
         /// <summary>
         /// Get all subscriptions
         /// </summary>
-        [HttpGet("subscriptions")]
+        /// <returns>List of all subscriptions</returns>
+        /// <response code="200">Returns the list of subscriptions</response>
+        [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll() =>
             Ok(await _service.GetAll());
@@ -80,7 +29,11 @@ namespace SubscriptionService.Controllers
         /// <summary>
         /// Get a specific subscription by ID
         /// </summary>
-        [HttpGet("subscriptions/{id}")]
+        /// <param name="id">Subscription ID</param>
+        /// <returns>The requested subscription</returns>
+        /// <response code="200">Returns the subscription</response>
+        /// <response code="404">If the subscription is not found</response>
+        [HttpGet("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Get(string id)
@@ -91,171 +44,109 @@ namespace SubscriptionService.Controllers
         }
 
         /// <summary>
-        /// Get active subscription for a user
+        /// Create a new subscription
         /// </summary>
-        [HttpGet("subscriptions/user/{userId}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetByUserId(string userId)
+        /// <param name="s">Subscription details</param>
+        /// <returns>The created subscription</returns>
+        /// <response code="201">Returns the newly created subscription</response>
+        [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        public async Task<IActionResult> Create(Subscription s)
         {
-            var sub = await _service.GetByUserId(userId);
+            await _service.Create(s);
+            return CreatedAtAction(nameof(Get), new { id = s.Id}, s);
+        }
+
+        /// <summary>
+        /// Extend a subscription by number of days
+        /// </summary>
+        /// <param name="id">Subscription ID</param>
+        /// <param name="days">Number of days to extend</param>
+        /// <returns>The updated subscription</returns>
+        /// <response code="200">Returns the extended subscription</response>
+        /// <response code="404">If the subscription is not found</response>
+        [HttpPost("{id}/extend")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Extend(string id, [FromBody] int days)
+        {
+            var sub = await _service.Get(id);
+            if (sub == null) return NotFound();
+
+            sub.EndDate = sub.EndDate.AddDays(days);
+            await _service.Update(id, sub);
+
             return Ok(sub);
         }
 
         /// <summary>
-        /// Get all subscriptions for a user
+        /// Update a subscription
         /// </summary>
-        [HttpGet("subscriptions/user/{userId}/all")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetAllByUserId(string userId) =>
-            Ok(await _service.GetAllByUserId(userId));
-
-        /// <summary>
-        /// Create a new subscription
-        /// </summary>
-        [HttpPost("subscriptions")]
-        [ProducesResponseType(StatusCodes.Status201Created)]
-        public async Task<IActionResult> Create([FromBody] CreateSubscriptionRequest request)
+        /// <param name="id">Subscription ID</param>
+        /// <param name="s">Updated subscription details</param>
+        /// <response code="204">Subscription updated successfully</response>
+        /// <response code="404">If the subscription is not found</response>
+        [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Update(string id, Subscription s)
         {
-            var sub = new Subscription
-            {
-                UserId = request.UserId,
-                PlanId = request.PlanId,
-                StartDate = DateTime.UtcNow,
-                Status = "active",
-                AutoRenew = true
-            };
+            var exists = await _service.Get(id);
+            if (exists == null) return NotFound();
 
-            var created = await _service.Create(sub);
-
-            // Create payment record
-            var plan = await _service.GetPlan(request.PlanId);
-            if (plan != null)
-            {
-                var payment = new Payment
-                {
-                    UserId = request.UserId,
-                    SubscriptionId = created.Id!,
-                    Amount = plan.Price,
-                    Status = "completed",
-                    PaymentMethod = request.PaymentMethod ?? "credit_card",
-                    TransactionId = Guid.NewGuid().ToString()
-                };
-                await _service.CreatePayment(payment);
-            }
-
-            return CreatedAtAction(nameof(Get), new { id = created.Id }, created);
+            s.Id = id;
+            await _service.Update(id, s);
+            return NoContent();
         }
 
         /// <summary>
         /// Cancel a subscription
         /// </summary>
-        [HttpPost("subscriptions/{id}/cancel")]
+        /// <param name="id">Subscription ID</param>
+        /// <returns>The cancelled subscription</returns>
+        /// <response code="200">Returns the cancelled subscription</response>
+        /// <response code="404">If the subscription is not found</response>
+        [HttpPut("{id}/cancel")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Cancel(string id, [FromBody] CancelRequest? request)
+        public async Task<IActionResult> Cancel(string id)
         {
             var sub = await _service.Get(id);
             if (sub == null) return NotFound();
 
-            sub.Status = "cancelled";
-            sub.CancelledAt = DateTime.UtcNow;
-            sub.CancelReason = request?.Reason;
+            sub.Status = "inactive";
             await _service.Update(id, sub);
 
             return Ok(sub);
         }
 
         /// <summary>
-        /// Renew a subscription
+        /// Delete a subscription
         /// </summary>
-        [HttpPost("subscriptions/{id}/renew")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Renew(string id)
+        /// <param name="id">Subscription ID</param>
+        /// <response code="204">Subscription deleted successfully</response>
+        [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<IActionResult> Delete(string id)
         {
-            var sub = await _service.Get(id);
-            if (sub == null) return NotFound();
-
-            var plan = await _service.GetPlan(sub.PlanId);
-            if (plan == null) return BadRequest("Plan not found");
-
-            sub.StartDate = sub.EndDate > DateTime.UtcNow ? sub.EndDate : DateTime.UtcNow;
-            sub.EndDate = sub.StartDate.AddDays(plan.DurationDays);
-            sub.Status = "active";
-            await _service.Update(id, sub);
-
-            // Create payment
-            var payment = new Payment
-            {
-                UserId = sub.UserId,
-                SubscriptionId = sub.Id!,
-                Amount = plan.Price,
-                Status = "completed",
-                PaymentMethod = "credit_card",
-                TransactionId = Guid.NewGuid().ToString()
-            };
-            await _service.CreatePayment(payment);
-
-            return Ok(sub);
+            await _service.Delete(id);
+            return NoContent();
         }
 
         /// <summary>
-        /// Reactivate a cancelled subscription
+        /// Delete all inactive subscriptions
         /// </summary>
-        [HttpPost("subscriptions/{id}/reactivate")]
+        /// <returns>Confirmation message</returns>
+        /// <response code="200">All inactive subscriptions deleted</response>
+        [HttpDelete("inactive/all")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Reactivate(string id)
+        public async Task<IActionResult> DeleteInactive()
         {
-            var sub = await _service.Get(id);
-            if (sub == null) return NotFound();
+            var all = await _service.GetAll();
+            foreach (var s in all.Where(s => s.Status != "active"))
+                await _service.Delete(s.Id);
 
-            if (sub.EndDate < DateTime.UtcNow)
-                return BadRequest("Subscription has expired. Please purchase a new subscription.");
-
-            sub.Status = "active";
-            sub.AutoRenew = true;
-            sub.CancelledAt = null;
-            sub.CancelReason = null;
-            await _service.Update(id, sub);
-
-            return Ok(sub);
+            return Ok("Inactive deleted.");
         }
-
-        // ========== PAYMENTS ==========
-
-        /// <summary>
-        /// Get payments for a user
-        /// </summary>
-        [HttpGet("payments/user/{userId}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetPaymentsByUserId(string userId) =>
-            Ok(await _service.GetPaymentsByUserId(userId));
-
-        /// <summary>
-        /// Get payments for a subscription
-        /// </summary>
-        [HttpGet("payments/subscription/{subscriptionId}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetPaymentsBySubscription(string subscriptionId) =>
-            Ok(await _service.GetPaymentsBySubscriptionId(subscriptionId));
-
-        /// <summary>
-        /// Health check
-        /// </summary>
-        [HttpGet("/health")]
-        public IActionResult Health() => Ok("Subscription Service is running");
-    }
-
-    public class CreateSubscriptionRequest
-    {
-        public string UserId { get; set; } = null!;
-        public string PlanId { get; set; } = null!;
-        public string? PaymentMethod { get; set; }
-    }
-
-    public class CancelRequest
-    {
-        public string? Reason { get; set; }
     }
 }
