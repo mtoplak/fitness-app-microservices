@@ -10,7 +10,14 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { AppService } from './app.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { CreateGroupClassDto } from './dto/create-group-class.dto';
@@ -22,7 +29,7 @@ import {
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { Public } from './auth/public.decorator';
 import { Roles } from './auth/roles.decorator';
-import { CurrentUser, RequestUser } from './auth/user.decorator';
+import { CurrentUser, type RequestUser } from './auth/user.decorator';
 
 @ApiBearerAuth()
 @Controller()
@@ -80,7 +87,11 @@ export class AppController {
   @Post('bookings')
   @ApiTags('Bookings')
   @ApiOperation({ summary: 'Create a booking for a group class' })
-  @ApiResponse({ status: 201, description: 'Booking created', type: BookingResponseDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Booking created',
+    type: BookingResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Class is full or invalid data' })
   @HttpCode(HttpStatus.CREATED)
   async createBooking(
@@ -108,7 +119,11 @@ export class AppController {
   @ApiTags('Bookings')
   @ApiOperation({ summary: 'Get user bookings' })
   @ApiQuery({ name: 'userId', description: 'User ID', required: false })
-  @ApiResponse({ status: 200, description: 'List of bookings', type: [BookingResponseDto] })
+  @ApiResponse({
+    status: 200,
+    description: 'List of bookings',
+    type: [BookingResponseDto],
+  })
   async getUserBookings(
     @Query('userId') userId: string,
     @CurrentUser() user: RequestUser,
@@ -122,7 +137,11 @@ export class AppController {
   @ApiTags('Bookings')
   @ApiOperation({ summary: 'Update a booking' })
   @ApiParam({ name: 'id', description: 'Booking ID' })
-  @ApiResponse({ status: 200, description: 'Booking updated', type: BookingResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Booking updated',
+    type: BookingResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Booking not found' })
   async updateBooking(
     @Param('id') id: string,
@@ -130,7 +149,7 @@ export class AppController {
   ): Promise<BookingResponseDto> {
     return this.appService.updateBooking(id, updateBookingDto);
   }
-  
+
   // Delete class
   @Roles('admin', 'trainer')
   @Delete('classes/:id')
@@ -138,14 +157,18 @@ export class AppController {
   async deleteClass(@Param('id') id: string): Promise<{ message: string }> {
     return this.appService.deleteClass(id);
   }
-  
+
   // Seznam vseh udeležencev za določeno vadbo (za trenerja)
   @Roles('admin', 'trainer')
   @Get('classes/:classId/participants')
   @ApiTags('Classes')
   @ApiOperation({ summary: 'Get class participants' })
   @ApiParam({ name: 'classId', description: 'Class ID' })
-  @ApiResponse({ status: 200, description: 'List of participants', type: [ParticipantResponseDto] })
+  @ApiResponse({
+    status: 200,
+    description: 'List of participants',
+    type: [ParticipantResponseDto],
+  })
   async getClassParticipants(
     @Param('classId') classId: string,
   ): Promise<ParticipantResponseDto[]> {

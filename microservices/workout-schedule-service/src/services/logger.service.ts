@@ -40,7 +40,9 @@ export class LoggerService implements OnModuleInit, OnModuleDestroy {
     try {
       this.connection = await amqp.connect(this.url);
       this.channel = await this.connection!.createChannel();
-      await this.channel!.assertExchange(this.exchange, 'topic', { durable: true });
+      await this.channel!.assertExchange(this.exchange, 'topic', {
+        durable: true,
+      });
       this.isConnected = true;
       console.log(`✅ RabbitMQ Logger connected for ${this.applicationName}`);
     } catch (error) {
@@ -54,11 +56,13 @@ export class LoggerService implements OnModuleInit, OnModuleDestroy {
     url: string,
     correlationId: string,
     message: string,
-    additionalData?: any
+    additionalData?: any,
   ): Promise<void> {
     if (!this.isConnected || !this.channel) {
       console.warn('⚠️ RabbitMQ not connected, logging to console only');
-      console.log(`${new Date().toISOString()} ${logType} ${url} Correlation: ${correlationId} [${this.applicationName}] - ${message}`);
+      console.log(
+        `${new Date().toISOString()} ${logType} ${url} Correlation: ${correlationId} [${this.applicationName}] - ${message}`,
+      );
       return;
     }
 
@@ -69,7 +73,7 @@ export class LoggerService implements OnModuleInit, OnModuleDestroy {
       correlationId,
       applicationName: this.applicationName,
       message,
-      additionalData
+      additionalData,
     };
 
     try {
@@ -78,23 +82,40 @@ export class LoggerService implements OnModuleInit, OnModuleDestroy {
         this.exchange,
         routingKey,
         Buffer.from(JSON.stringify(logData)),
-        { persistent: true }
+        { persistent: true },
       );
-      console.log(`${logData.timestamp.toISOString()} ${logType} ${url} Correlation: ${correlationId} [${this.applicationName}] - ${message}`);
+      console.log(
+        `${logData.timestamp.toISOString()} ${logType} ${url} Correlation: ${correlationId} [${this.applicationName}] - ${message}`,
+      );
     } catch (error) {
       console.error('❌ Failed to send log to RabbitMQ:', error);
     }
   }
 
-  async info(url: string, correlationId: string, message: string, additionalData?: any): Promise<void> {
+  async info(
+    url: string,
+    correlationId: string,
+    message: string,
+    additionalData?: any,
+  ): Promise<void> {
     await this.log('INFO', url, correlationId, message, additionalData);
   }
 
-  async error(url: string, correlationId: string, message: string, additionalData?: any): Promise<void> {
+  async error(
+    url: string,
+    correlationId: string,
+    message: string,
+    additionalData?: any,
+  ): Promise<void> {
     await this.log('ERROR', url, correlationId, message, additionalData);
   }
 
-  async warn(url: string, correlationId: string, message: string, additionalData?: any): Promise<void> {
+  async warn(
+    url: string,
+    correlationId: string,
+    message: string,
+    additionalData?: any,
+  ): Promise<void> {
     await this.log('WARN', url, correlationId, message, additionalData);
   }
 
