@@ -37,44 +37,13 @@ export class RabbitMQService {
     }
   }
 
-  async startConsuming(): Promise<void> {
-    if (!this.channel) {
-      throw new Error('RabbitMQ channel not initialized');
-    }
-
-    console.log('👂 Waiting for log messages...');
-
-    await this.channel.consume(
-      this.queue,
-      async (msg) => {
-        if (msg) {
-          try {
-            const logData = JSON.parse(msg.content.toString());
-            console.log('📝 Received log:', logData);
-
-            // Save to database
-            const log = new Log(logData);
-            await log.save();
-
-            // Acknowledge message
-            this.channel!.ack(msg);
-          } catch (error) {
-            console.error('❌ Error processing log message:', error);
-            // Reject and don't requeue if there's a parsing error
-            this.channel!.nack(msg, false, false);
-          }
-        }
-      },
-      { noAck: false }
-    );
-  }
-
-  async fetchAllLogs(): Promise<void> {
+  async fetchAllLogs(): Promise<number> {
     if (!this.channel) {
       throw new Error('RabbitMQ channel not initialized');
     }
 
     let messageCount = 0;
+    console.log('📥 Starting to fetch logs from queue...');
 
     while (true) {
       const msg = await this.channel.get(this.queue, { noAck: false });
@@ -85,6 +54,7 @@ export class RabbitMQService {
 
       try {
         const logData = JSON.parse(msg.content.toString());
+        console.log(`📝 Processing log ${messageCount + 1}:`, logData.message);
         
         // Save to database
         const log = new Log(logData);
@@ -99,7 +69,8 @@ export class RabbitMQService {
       }
     }
 
-    return Promise.resolve();
+    console.log(`✅ Fetched and saved ${messageCount} logs from queue`);
+    return messageCount;
   }
 
   async close(): Promise<void> {

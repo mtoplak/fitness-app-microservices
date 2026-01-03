@@ -16,16 +16,17 @@ export const setRabbitMQService = (service: RabbitMQService) => {
  */
 router.post('/', async (req: Request, res: Response) => {
   try {
-    console.log('📥 Fetching all logs from RabbitMQ queue...');
+    console.log('📥 POST /logs called - Fetching all logs from RabbitMQ queue...');
     
-    await rabbitMQService.fetchAllLogs();
+    const fetchedCount = await rabbitMQService.fetchAllLogs();
     
-    const logCount = await Log.countDocuments();
+    const totalLogCount = await Log.countDocuments();
     
     res.status(200).json({
       success: true,
       message: 'Logs fetched from RabbitMQ and saved to database',
-      totalLogsInDatabase: logCount
+      fetchedFromQueue: fetchedCount,
+      totalLogsInDatabase: totalLogCount
     });
   } catch (error: any) {
     console.error('❌ Error fetching logs:', error);

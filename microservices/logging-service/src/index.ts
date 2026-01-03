@@ -64,12 +64,16 @@ const startServer = async () => {
       }
     }
     
-    // Start consuming messages in background
-    rabbitMQService.startConsuming().catch(console.error);
+    // Note: NOT automatically consuming messages
+    // Logs are fetched only when POST /logs is called
+    console.log('ℹ️  Logs will be fetched from RabbitMQ only when POST /logs is called');
     
     // Start Express server
     app.listen(PORT, () => {
       console.log(`🚀 Logging Service running on port ${PORT}`);
+      console.log(`📋 POST /logs - Fetch logs from RabbitMQ queue`);
+      console.log(`📋 GET /logs/:dateFrom/:dateTo - Get logs by date range`);
+      console.log(`📋 DELETE /logs - Delete all logs from database`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
