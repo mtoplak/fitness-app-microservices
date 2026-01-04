@@ -27,13 +27,13 @@ if [ "$1" == "--docker" ]; then
     # Wait a bit for data to be available
     sleep 2
     
-    # Seed Subscription Service (C# service - run locally)
+    # Seed Subscription Service (C# - run inside container)
     echo "2️⃣  Seeding Subscription Service..."
-    cd subscription-service && MONGODB_URI="mongodb://admin:admin123@localhost:27019/fitness-subscriptions?authSource=admin" npx tsx scripts/seed.ts && cd ..
+    docker compose -f docker-compose.dev.yml exec -e MONGODB_URI="mongodb://admin:admin123@mongo-subscriptions:27017/fitness_subscriptions?authSource=admin" subscription-service dotnet run --project /src/scripts/Seed.csproj
     
-    # Seed Trainer Booking Service (C# service - run locally)
+    # Seed Trainer Booking Service (C# - run inside container)
     echo "3️⃣  Seeding Trainer Booking Service..."
-    cd trainer-booking-service && MONGODB_URI="mongodb://admin:admin123@localhost:27020/fitness_trainer_bookings?authSource=admin" npx tsx scripts/seed.ts && cd ..
+    docker compose -f docker-compose.dev.yml exec -e MONGODB_URI="mongodb://admin:admin123@mongo-trainer-bookings:27017/fitness_trainer_bookings?authSource=admin" trainer-booking-service dotnet run --project /src/scripts/Seed.csproj
     
     # Seed Group Class Booking Service
     echo "4️⃣  Seeding Group Class Booking Service..."
@@ -54,13 +54,21 @@ else
     # Wait a bit for data to be available
     sleep 2
     
-    # Seed Subscription Service (C#)
+    # Seed Subscription Service (C# - requires .NET SDK locally)
     echo "2️⃣  Seeding Subscription Service..."
-    cd subscription-service && MONGODB_URI="mongodb://admin:admin123@localhost:27019/fitness-subscriptions?authSource=admin" npx tsx scripts/seed.ts && cd ..
+    if command -v dotnet &> /dev/null; then
+        cd subscription-service/scripts && MONGODB_URI="mongodb://admin:admin123@localhost:27019/fitness_subscriptions?authSource=admin" dotnet run && cd ../..
+    else
+        echo -e "${YELLOW}⚠️  Skipping: dotnet not installed. Run with --docker flag to seed C# services in containers.${NC}"
+    fi
     
-    # Seed Trainer Booking Service (C#)
+    # Seed Trainer Booking Service (C# - requires .NET SDK locally)
     echo "3️⃣  Seeding Trainer Booking Service..."
-    cd trainer-booking-service && MONGODB_URI="mongodb://admin:admin123@localhost:27020/fitness_trainer_bookings?authSource=admin" npx tsx scripts/seed.ts && cd ..
+    if command -v dotnet &> /dev/null; then
+        cd trainer-booking-service/scripts && MONGODB_URI="mongodb://admin:admin123@localhost:27020/fitness_trainer_bookings?authSource=admin" dotnet run && cd ../..
+    else
+        echo -e "${YELLOW}⚠️  Skipping: dotnet not installed. Run with --docker flag to seed C# services in containers.${NC}"
+    fi
     
     # Seed Group Class Booking Service
     echo "4️⃣  Seeding Group Class Booking Service..."

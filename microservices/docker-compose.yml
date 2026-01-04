@@ -1,4 +1,25 @@
 services:
+  # ========== RABBITMQ MESSAGE BROKER ==========
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: fitness
+      RABBITMQ_DEFAULT_PASS: fitness123
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - fitness-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
   # ========== KONG GATEWAY ==========
   kong-database:
     image: postgres:15-alpine
@@ -40,6 +61,7 @@ services:
   kong:
     image: kong:3.3.1-alpine
     container_name: kong-gateway
+    restart: on-failure
     environment:
       KONG_DATABASE: postgres
       KONG_PG_HOST: kong-database
@@ -52,6 +74,10 @@ services:
       KONG_ADMIN_ERROR_LOG: /dev/stderr
       KONG_ADMIN_LISTEN: 0.0.0.0:8001
       KONG_PROXY_LISTEN: 0.0.0.0:8000, 0.0.0.0:8443 ssl
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_DNS_STALE_TTL: 5
+      KONG_DNS_NOT_FOUND_TTL: 1
+      KONG_DNS_ERROR_TTL: 1
     depends_on:
       kong-database:
         condition: service_healthy
@@ -111,13 +137,19 @@ services:
       context: ./user-service
       dockerfile: Dockerfile
     container_name: user-service
+    restart: on-failure
     environment:
       MONGODB_URI: mongodb://mongodb-users:27017/fitness-users
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
       PORT: 3001
       NODE_ENV: development
+      RABBITMQ_URL: amqp://fitness:fitness123@rabbitmq:5672
+      RABBITMQ_EXCHANGE: fitness-logs-exchange
+      RABBITMQ_QUEUE: fitness-logs-queue
     depends_on:
       mongodb-users:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - fitness-network
@@ -146,14 +178,20 @@ services:
       context: ./subscription-service
       dockerfile: Dockerfile
     container_name: subscription-service
+    restart: on-failure
     environment:
       MONGODB_URI: mongodb://mongodb-subscriptions:27017/fitness-subscriptions
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
       PORT: 3002
       NODE_ENV: development
       USER_SERVICE_URL: http://user-service:3001
+      RABBITMQ_URL: amqp://fitness:fitness123@rabbitmq:5672
+      RABBITMQ_EXCHANGE: fitness-logs-exchange
+      RABBITMQ_QUEUE: fitness-logs-queue
     depends_on:
       mongodb-subscriptions:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - fitness-network
@@ -177,6 +215,7 @@ services:
       context: ./trainer-booking-service
       dockerfile: Dockerfile
     container_name: trainer-booking-service
+    restart: on-failure
     environment:
       MONGODB_URI: mongodb://mongodb-trainer-bookings:27017/fitness-trainer-bookings
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
@@ -184,8 +223,13 @@ services:
       NODE_ENV: development
       USER_SERVICE_URL: http://user-service:3001
       SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
+      RABBITMQ_URL: amqp://fitness:fitness123@rabbitmq:5672
+      RABBITMQ_EXCHANGE: fitness-logs-exchange
+      RABBITMQ_QUEUE: fitness-logs-queue
     depends_on:
       mongodb-trainer-bookings:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - fitness-network
@@ -209,14 +253,20 @@ services:
       context: ./workout-schedule-service
       dockerfile: Dockerfile
     container_name: workout-schedule-service
+    restart: on-failure
     environment:
       MONGODB_URI: mongodb://mongodb-workout-schedules:27017/fitness-workout-schedules
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
       PORT: 3004
       NODE_ENV: development
       USER_SERVICE_URL: http://user-service:3001
+      RABBITMQ_URL: amqp://fitness:fitness123@rabbitmq:5672
+      RABBITMQ_EXCHANGE: fitness-logs-exchange
+      RABBITMQ_QUEUE: fitness-logs-queue
     depends_on:
       mongodb-workout-schedules:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - fitness-network
@@ -240,6 +290,7 @@ services:
       context: ./group-class-booking-service
       dockerfile: Dockerfile
     container_name: group-class-booking-service
+    restart: on-failure
     environment:
       MONGODB_URI: mongodb://mongodb-group-bookings:27017/fitness-group-bookings
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
@@ -248,8 +299,13 @@ services:
       USER_SERVICE_URL: http://user-service:3001
       WORKOUT_SCHEDULE_SERVICE_URL: http://workout-schedule-service:3004
       SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
+      RABBITMQ_URL: amqp://fitness:fitness123@rabbitmq:5672
+      RABBITMQ_EXCHANGE: fitness-logs-exchange
+      RABBITMQ_QUEUE: fitness-logs-queue
     depends_on:
       mongodb-group-bookings:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - fitness-network
@@ -273,6 +329,7 @@ services:
       context: ./admin-reporting-service
       dockerfile: Dockerfile
     container_name: admin-reporting-service
+    restart: on-failure
     environment:
       MONGODB_URI: mongodb://mongodb-admin-reports:27017/fitness-admin-reports
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
@@ -283,17 +340,141 @@ services:
       TRAINER_BOOKING_SERVICE_URL: http://trainer-booking-service:3003
       WORKOUT_SCHEDULE_SERVICE_URL: http://workout-schedule-service:3004
       GROUP_CLASS_BOOKING_SERVICE_URL: http://group-class-booking-service:3005
+      RABBITMQ_URL: amqp://fitness:fitness123@rabbitmq:5672
+      RABBITMQ_EXCHANGE: fitness-logs-exchange
+      RABBITMQ_QUEUE: fitness-logs-queue
     depends_on:
       mongodb-admin-reports:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - fitness-network
+
+  # ========== LOGGING SERVICE ==========
+  mongodb-logs:
+    image: mongo:7-jammy
+    container_name: mongodb-logs
+    volumes:
+      - mongo-logs-data:/data/db
+    networks:
+      - fitness-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  logging-service:
+    build:
+      context: ./logging-service
+      dockerfile: Dockerfile
+    container_name: logging-service
+    restart: on-failure
+    environment:
+      MONGODB_URI: mongodb://mongodb-logs:27017/fitness-logs
+      PORT: 3007
+      NODE_ENV: development
+      RABBITMQ_URL: amqp://fitness:fitness123@rabbitmq:5672
+      RABBITMQ_EXCHANGE: fitness-logs-exchange
+      RABBITMQ_QUEUE: fitness-logs-queue
+    depends_on:
+      mongodb-logs:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - fitness-network
+
+  # ========== FRONTEND ==========
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    environment:
+      VITE_API_URL: http://localhost:8000
+    ports:
+      - "8080:8080"
+    networks:
+      - fitness-network
+
+  # Kong Configurator - automatically configures Kong after startup
+  kong-configurator:
+    image: curlimages/curl:latest
+    container_name: kong-configurator
+    restart: "no"
+    depends_on:
+      kong:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+      subscription-service:
+        condition: service_started
+      trainer-booking-service:
+        condition: service_started
+      workout-schedule-service:
+        condition: service_started
+      group-class-booking-service:
+        condition: service_started
+      admin-reporting-service:
+        condition: service_started
+    networks:
+      - fitness-network
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "⏳ Waiting 10 seconds for services to fully initialize..."
+        sleep 10
+        
+        echo "🔧 Configuring Kong Gateway..."
+        
+        # Function to create or update Kong service
+        configure_service() {
+          SERVICE_NAME=$$1
+          SERVICE_URL=$$2
+          ROUTE_PATH=$$3
+          
+          echo "📝 Configuring $$SERVICE_NAME..."
+          
+          # Try to get existing service
+          SERVICE_ID=$$(curl -s http://kong-gateway:8001/services/$$SERVICE_NAME | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
+          
+          if [ -n "$$SERVICE_ID" ]; then
+            # Update existing service
+            curl -i -X PATCH http://kong-gateway:8001/services/$$SERVICE_NAME \
+              --data "url=$$SERVICE_URL" 2>/dev/null | head -n 1
+          else
+            # Create new service
+            curl -i -X POST http://kong-gateway:8001/services/ \
+              --data "name=$$SERVICE_NAME" \
+              --data "url=$$SERVICE_URL" 2>/dev/null | head -n 1
+            
+            # Create route for new service
+            curl -i -X POST http://kong-gateway:8001/services/$$SERVICE_NAME/routes \
+              --data "paths[]=$$ROUTE_PATH" \
+              --data "strip_path=false" 2>/dev/null | head -n 1
+          fi
+        }
+        
+        # Configure all services
+        configure_service "user-service" "http://user-service:3001" "/api/users"
+        configure_service "subscription-service" "http://subscription-service:3002" "/api/subscriptions"
+        configure_service "trainer-booking-service" "http://trainer-booking-service:3003" "/api/trainers"
+        configure_service "workout-schedule-service" "http://workout-schedule-service:3004" "/api/schedules"
+        configure_service "group-class-booking-service" "http://group-class-booking-service:3005" "/api/classes"
+        configure_service "admin-reporting-service" "http://admin-reporting-service:3006" "/api/admin"
+        
+        echo "✅ Kong configuration completed!"
+        echo "🌐 API Gateway ready at http://localhost:8000"
 
 networks:
   fitness-network:
     driver: bridge
 
 volumes:
+  rabbitmq-data:
   kong-db-data:
   mongo-users-data:
   mongo-subscriptions-data:
@@ -301,3 +482,4 @@ volumes:
   mongo-workout-schedules-data:
   mongo-group-bookings-data:
   mongo-admin-reports-data:
+  mongo-logs-data:

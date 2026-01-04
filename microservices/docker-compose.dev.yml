@@ -1,4 +1,25 @@
 services:
+  # ========== RABBITMQ MESSAGE BROKER ==========
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: fitness
+      RABBITMQ_DEFAULT_PASS: fitness123
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - fitness-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
   # Kong Database
   kong-database:
     image: postgres:15-alpine
@@ -36,12 +57,13 @@ services:
         condition: service_healthy
     networks:
       - fitness-network
-    restart: on-failure
+    restart: "no"
 
   # Kong Gateway
   kong:
     image: kong:3.3.1
     container_name: kong-gateway
+    restart: on-failure
     environment:
       KONG_DATABASE: postgres
       KONG_PG_HOST: kong-database
@@ -55,6 +77,10 @@ services:
       KONG_ADMIN_LISTEN: 0.0.0.0:8001
       KONG_ADMIN_GUI_URL: http://localhost:8002
       KONG_PROXY_LISTEN: 0.0.0.0:8000, 0.0.0.0:9000
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_DNS_STALE_TTL: 5
+      KONG_DNS_NOT_FOUND_TTL: 1
+      KONG_DNS_ERROR_TTL: 1
     ports:
       - "8000:8000"
       - "8001:8001"
@@ -89,9 +115,10 @@ services:
       - fitness-network
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
   mongo-group-bookings:
     image: mongo:7
     container_name: mongo-group-bookings
@@ -107,9 +134,10 @@ services:
       - fitness-network
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
 
   # ========== MICROSERVICES ==========
   # User Service
@@ -118,6 +146,8 @@ services:
       context: ./user-service
       dockerfile: Dockerfile
     container_name: user-service
+    restart: on-failure
+    entrypoint: ["/bin/sh", "-c", "sleep 20 && npm start"]
     ports:
       - "3001:3001"
     environment:
@@ -125,8 +155,13 @@ services:
       JWT_SECRET: dev-secret-key
       PORT: 3001
       NODE_ENV: development
+      RABBITMQ_URL: amqp://fitness:fitness123@rabbitmq:5672
+      RABBITMQ_EXCHANGE: fitness-logs-exchange
+      RABBITMQ_QUEUE: fitness-logs-queue
     depends_on:
       mongo-users:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - fitness-network
@@ -147,15 +182,18 @@ services:
       - fitness-network
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
 
   subscription-service:
     build:
       context: ./subscription-service
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: subscription-service
+    restart: on-failure
+    entrypoint: ["/bin/sh", "-c", "sleep 20 && dotnet run"]
     ports:
       - "3002:3002"
     environment:
@@ -166,8 +204,13 @@ services:
       PORT: 3002
       ASPNETCORE_URLS: http://+:3002
       ASPNETCORE_ENVIRONMENT: Development
+      RABBITMQ_URL: amqp://fitness:fitness123@rabbitmq:5672
+      RABBITMQ_EXCHANGE: fitness-logs-exchange
+      RABBITMQ_QUEUE: fitness-logs-queue
     depends_on:
       mongo-subscriptions:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - fitness-network
@@ -188,15 +231,18 @@ services:
       - fitness-network
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
 
   trainer-booking-service:
     build:
       context: ./trainer-booking-service
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: trainer-booking-service
+    restart: on-failure
+    entrypoint: ["/bin/sh", "-c", "sleep 20 && dotnet run"]
     ports:
       - "3003:3003"
     environment:
@@ -205,8 +251,13 @@ services:
       MONGODB_URI: mongodb://admin:admin123@mongo-trainer-bookings:27017/fitness_trainer_bookings?authSource=admin
       ASPNETCORE_URLS: http://+:3003
       ASPNETCORE_ENVIRONMENT: Development
+      RABBITMQ_URL: amqp://fitness:fitness123@rabbitmq:5672
+      RABBITMQ_EXCHANGE: fitness-logs-exchange
+      RABBITMQ_QUEUE: fitness-logs-queue
     depends_on:
       mongo-trainer-bookings:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - fitness-network
@@ -227,15 +278,18 @@ services:
       - fitness-network
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
 
   workout-schedule-service:
     build:
       context: ./workout-schedule-service
       dockerfile: Dockerfile
     container_name: workout-schedule-service
+    restart: on-failure
+    entrypoint: ["/bin/sh", "-c", "sleep 20 && npm start"]
     ports:
       - "3004:3004"
     environment:
@@ -243,8 +297,13 @@ services:
       JWT_SECRET: dev-secret-key
       PORT: 3004
       NODE_ENV: development
+      RABBITMQ_URL: amqp://fitness:fitness123@rabbitmq:5672
+      RABBITMQ_EXCHANGE: fitness-logs-exchange
+      RABBITMQ_QUEUE: fitness-logs-queue
     depends_on:
       mongo-workout-schedules:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - fitness-network
@@ -265,15 +324,18 @@ services:
       - fitness-network
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
 
   group-class-booking-service:
     build:
       context: ./group-class-booking-service
       dockerfile: Dockerfile
     container_name: group-class-booking-service
+    restart: on-failure
+    entrypoint: ["/bin/sh", "-c", "sleep 20 && npm start"]
     ports:
       - "3005:3005"
     environment:
@@ -281,8 +343,13 @@ services:
       JWT_SECRET: dev-secret-key
       PORT: 3005
       NODE_ENV: development
+      RABBITMQ_URL: amqp://fitness:fitness123@rabbitmq:5672
+      RABBITMQ_EXCHANGE: fitness-logs-exchange
+      RABBITMQ_QUEUE: fitness-logs-queue
     depends_on:
       mongo-group-class-bookings:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - fitness-network
@@ -303,15 +370,18 @@ services:
       - fitness-network
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
 
   admin-reporting-service:
     build:
       context: ./admin-reporting-service
       dockerfile: Dockerfile
     container_name: admin-reporting-service
+    restart: on-failure
+    entrypoint: ["/bin/sh", "-c", "sleep 20 && npm start"]
     ports:
       - "3006:3006"
     environment:
@@ -319,13 +389,150 @@ services:
       JWT_SECRET: dev-secret-key
       PORT: 3006
       NODE_ENV: development
+      RABBITMQ_URL: amqp://fitness:fitness123@rabbitmq:5672
+      RABBITMQ_EXCHANGE: fitness-logs-exchange
+      RABBITMQ_QUEUE: fitness-logs-queue
     depends_on:
       mongo-admin-reports:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - fitness-network
 
+  # ========== LOGGING SERVICE ==========
+  mongo-logs:
+    image: mongo:7
+    container_name: mongo-logs
+    ports:
+      - "27024:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: fitness_logs
+    volumes:
+      - mongo-logs-data:/data/db
+    networks:
+      - fitness-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  logging-service:
+    build:
+      context: ./logging-service
+      dockerfile: Dockerfile
+    container_name: logging-service
+    restart: on-failure
+    entrypoint: ["/bin/sh", "-c", "sleep 20 && npm start"]
+    ports:
+      - "3007:3007"
+    environment:
+      MONGODB_URI: mongodb://admin:admin123@mongo-logs:27017/fitness_logs?authSource=admin
+      PORT: 3007
+      NODE_ENV: development
+      RABBITMQ_URL: amqp://fitness:fitness123@rabbitmq:5672
+      RABBITMQ_EXCHANGE: fitness-logs-exchange
+      RABBITMQ_QUEUE: fitness-logs-queue
+    depends_on:
+      mongo-logs:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - fitness-network
+
+  # ========== FRONTEND ==========
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "8080:8080"
+    environment:
+      VITE_API_URL: http://localhost:8000
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    networks:
+      - fitness-network
+
+  # Kong Configurator - automatically configures Kong after startup
+  kong-configurator:
+    image: curlimages/curl:latest
+    container_name: kong-configurator
+    restart: "no"
+    depends_on:
+      kong:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+      subscription-service:
+        condition: service_started
+      trainer-booking-service:
+        condition: service_started
+      workout-schedule-service:
+        condition: service_started
+      group-class-booking-service:
+        condition: service_started
+      admin-reporting-service:
+        condition: service_started
+    networks:
+      - fitness-network
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "⏳ Waiting 10 seconds for services to fully initialize..."
+        sleep 10
+        
+        echo "🔧 Configuring Kong Gateway..."
+        
+        # Function to create or update Kong service
+        configure_service() {
+          SERVICE_NAME=$$1
+          SERVICE_URL=$$2
+          ROUTE_PATH=$$3
+          
+          echo "📝 Configuring $$SERVICE_NAME..."
+          
+          # Try to get existing service
+          SERVICE_ID=$$(curl -s http://kong-gateway:8001/services/$$SERVICE_NAME | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
+          
+          if [ -n "$$SERVICE_ID" ]; then
+            # Update existing service
+            curl -i -X PATCH http://kong-gateway:8001/services/$$SERVICE_NAME \
+              --data "url=$$SERVICE_URL" 2>/dev/null | head -n 1
+          else
+            # Create new service
+            curl -i -X POST http://kong-gateway:8001/services/ \
+              --data "name=$$SERVICE_NAME" \
+              --data "url=$$SERVICE_URL" 2>/dev/null | head -n 1
+            
+            # Create route for new service
+            curl -i -X POST http://kong-gateway:8001/services/$$SERVICE_NAME/routes \
+              --data "paths[]=$$ROUTE_PATH" \
+              --data "strip_path=false" 2>/dev/null | head -n 1
+          fi
+        }
+        
+        # Configure all services
+        configure_service "user-service" "http://user-service:3001" "/api/users"
+        configure_service "subscription-service" "http://subscription-service:3002" "/api/subscriptions"
+        configure_service "trainer-booking-service" "http://trainer-booking-service:3003" "/api/trainers"
+        configure_service "workout-schedule-service" "http://workout-schedule-service:3004" "/api/schedules"
+        configure_service "group-class-booking-service" "http://group-class-booking-service:3005" "/api/classes"
+        configure_service "admin-reporting-service" "http://admin-reporting-service:3006" "/api/admin"
+        
+        echo "✅ Kong configuration completed!"
+        echo "🌐 API Gateway ready at http://localhost:8000"
+
 volumes:
+  rabbitmq-data:
   kong-db-data:
   mongo-users-data:
   mongo-group-bookings-data:
@@ -334,6 +541,7 @@ volumes:
   mongo-workout-schedules-data:
   mongo-group-class-bookings-data:
   mongo-admin-reports-data:
+  mongo-logs-data:
 networks:
   fitness-network:
     driver: bridge

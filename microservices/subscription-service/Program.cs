@@ -1,7 +1,15 @@
 using SubscriptionService.Services;
+using SubscriptionService.Logging;
+using SubscriptionService.Middleware;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure RabbitMQ Logger
+var rabbitMqUrl = builder.Configuration["RABBITMQ_URL"] ?? "amqp://localhost:5672";
+var rabbitMqExchange = builder.Configuration["RABBITMQ_EXCHANGE"] ?? "fitness-logs-exchange";
+var logger = new RabbitMQLogger(rabbitMqUrl, rabbitMqExchange, "subscription-service");
+builder.Services.AddSingleton(logger);
 
 builder.Services.AddSingleton<SubscriptionService.Services.SubscriptionService>();
 
@@ -38,6 +46,13 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 app.UseCors("AllowAll");
+
+// Add Correlation ID middleware (must be before logging)
+app.UseCorrelationId();
+
+// Add Logging middleware
+app.UseRabbitMQLogging();
+
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {

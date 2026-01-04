@@ -36,13 +36,6 @@ Start services with all ports exposed for direct access:
 
 ```bash
 cd microservices
-docker compose -f docker-compose.local.yml up -d
-```
-
-**Or** for dev environment:
-
-```bash
-cd microservices
 docker compose -f docker-compose.dev.yml up -d
 ```
 
@@ -75,14 +68,14 @@ cd workout-schedule-service && npm run seed
 
 ### Microservices & Swagger Documentation
 
-| Service | Port | Swagger URL |
-|---------|------|-------------|
-| User Service | 3001 | http://localhost:3001/api-docs |
-| Subscription Service | 3002 | http://localhost:3002/api-docs |
-| Trainer Booking Service | 3003 | http://localhost:3003/api-docs |
-| Workout Schedule Service | 3004 | http://localhost:3004/api-docs |
-| Group Class Booking Service | 3005 | http://localhost:3005/api-docs |
-| Admin Reporting Service | 3006 | http://localhost:3006/api-docs |
+| Service | Port | Swagger URL | Framework |
+|---------|------|-------------| -----------|
+| User Service | 3001 | http://localhost:3001/api-docs | ExpressJS |
+| Subscription Service | 3002 | http://localhost:3002/api-docs | .NET 8 |
+| Trainer Booking Service | 3003 | http://localhost:3003/api-docs | .NET 8 |
+| Workout Schedule Service | 3004 | http://localhost:3004/api-docs | NestJS |
+| Group Class Booking Service | 3005 | http://localhost:3005/api-docs | NestJS |
+| Admin Reporting Service | 3006 | http://localhost:3006/api-docs | NestJS |
 
 ### Infrastructure
 
@@ -92,6 +85,8 @@ cd workout-schedule-service && npm run seed
 | Kong Admin API | 8001, 8444 | http://localhost:8001 |
 | Konga UI (prod only) | 1337 | http://localhost:1337 |
 | PostgreSQL (dev only) | 5432 | localhost:5432 |
+| RabbitMQ | 5672, 15672 | http://localhost:15672 (UI) |
+| Logging Service | 3007 | http://localhost:3007 |
 
 ### MongoDB Instances (Local)
 
@@ -103,6 +98,65 @@ cd workout-schedule-service && npm run seed
 | Reporting | 27020 | mongodb://admin:admin123@localhost:27020 |
 | Trainer Bookings | 27021 | mongodb://admin:admin123@localhost:27021 |
 | Workout Schedules | 27022 | mongodb://admin:admin123@localhost:27022 |
+| Logging Service | 27020 | mongodb://mongodb-logs:27017 |
+
+---
+
+## 📊 RabbitMQ Logging System
+
+The logging system uses RabbitMQ as a message broker for centralized log collection from all microservices.
+
+### RabbitMQ Management UI
+
+**URL**: http://localhost:15672  
+**Username**: `fitness`  
+**Password**: `fitness123`
+
+### Logging Service Endpoints
+
+**Port**: 3007
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST   | `/logs`  | Fetches all logs from RabbitMQ and saves them to MongoDB |
+| GET    | `/logs/:dateFrom/:dateTo` | Retrieves logs between two dates (YYYY-MM-DD) |
+| DELETE | `/logs`  | Deletes all logs from the database |
+| GET    | `/health`| Health check |
+
+### Usage
+
+```bash
+# Fetch logs from RabbitMQ to the database
+curl -X POST http://localhost:3007/logs
+
+# Retrieve logs for January 2026
+curl http://localhost:3007/logs/2026-01-01/2026-01-31
+
+# Delete all logs
+curl -X DELETE http://localhost:3007/logs
+```
+
+### Implementation Files
+
+**Express Services (user-service)**:
+- `src/utils/logger.ts` - RabbitMQ logger
+- `src/middleware/correlationId.middleware.ts` - Correlation ID
+- `src/middleware/logging.middleware.ts` - Request/response logging
+- `src/utils/serviceRequest.ts` - Inter-service communication
+
+**NestJS Services (subscription, workout, group-class, admin)**:
+- `src/services/logger.service.ts` - Logger service
+- `src/middleware/correlation-id.middleware.ts` - Correlation ID
+- `src/middleware/logging.middleware.ts` - Request logging
+
+**.NET Services (subscription, trainer-booking)**:
+- `Logging/RabbitMQLogger.cs` - Logger class
+- `Middleware/CorrelationIdMiddleware.cs` - Correlation ID
+- `Middleware/LoggingMiddleware.cs` - Request logging
+
+### Correlation ID
+
+Each request receives a unique UUID via the `X-Correlation-ID` header, enabling traceability of calls across all microservices.
 
 ---
 
@@ -166,21 +220,6 @@ docker compose logs -f
 
 # Rebuild and start
 docker compose up -d --build
-```
-
-### Local Development
-```bash
-# Start
-docker compose -f docker-compose.local.yml up -d
-
-# Stop
-docker compose -f docker-compose.local.yml down
-
-# View logs
-docker compose -f docker-compose.local.yml logs -f [service-name]
-
-# Rebuild specific service
-docker compose -f docker-compose.local.yml up -d --build user-service
 ```
 
 ### Dev Environment

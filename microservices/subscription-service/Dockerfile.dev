@@ -1,0 +1,9 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+WORKDIR /src
+
+COPY . .
+RUN dotnet restore
+
+EXPOSE 3002
+
+CMD ["dotnet", "watch", "run", "--no-restore"]
