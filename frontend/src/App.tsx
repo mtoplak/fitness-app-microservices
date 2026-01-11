@@ -18,6 +18,7 @@ import Profile from "./pages/Profile";
 import Membership from "./pages/Membership";
 import DashboardRouter from "./pages/DashboardRouter";
 import PersonalTraining from "./pages/PersonalTraining";
+import Statistics from "./pages/Statistics";
 
 const queryClient = new QueryClient();
 
@@ -122,6 +123,14 @@ const App = () => (
                   <ProtectedRoute requireRole="member">
                     <PersonalTraining />
                   </ProtectedRoute>
+                </SiteLayout>
+              }
+            />
+            <Route
+              path="/statistics"
+              element={
+                <SiteLayout>
+                  <Statistics />
                 </SiteLayout>
               }
             />
