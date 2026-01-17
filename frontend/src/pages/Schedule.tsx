@@ -105,6 +105,7 @@ export default function Schedule() {
     available: number;
     isFull: boolean;
   } | null>(null);
+  const [alreadyBooked, setAlreadyBooked] = useState(false);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   
@@ -124,6 +125,17 @@ export default function Schedule() {
     end.setDate(end.getDate() + 6);
     return end;
   }, [weekStart]);
+
+  // Index of today's column based on the displayed week (Pon=0 ... Ned=6)
+  const todayColumnIndex = useMemo(() => {
+    if (currentWeekOffset !== 0) return -1;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + i);
+      if (isDateToday(d)) return i;
+    }
+    return -1;
+  }, [weekStart, currentWeekOffset]);
 
   const canGoBack = currentWeekOffset > 0;
   const canGoForward = currentWeekOffset < 2; // Max 3 weeks (0, 1, 2)
@@ -194,14 +206,27 @@ export default function Schedule() {
       const dateStr = formatDateToYYYYMMDD(classDate);
       const avail = await api.getClassAvailability(groupClass._id, dateStr);
       setAvailability(avail);
+      // Preveri ali ima uporabnik že rezervirano to vadbo
+      const hasBooked = await api.hasBookedClass(groupClass._id);
+      setAlreadyBooked(hasBooked);
     } catch (e) {
       console.error("Napaka pri preverjanju razpoložljivosti:", e);
       setAvailability(null);
+      setAlreadyBooked(false);
     }
   };
 
   const handleBooking = async () => {
     if (!selectedClass || !user) return;
+
+    if (alreadyBooked) {
+      toast({
+        title: "Že rezervirano",
+        description: "To vadbo imate že rezervirano.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setBookingLoading(true);
     
@@ -288,9 +313,10 @@ export default function Schedule() {
                     // dayNames array: [Pon=0, Tor=1, Sre=2, Čet=3, Pet=4, Sob=5, Ned=6]
                     // Need to convert to dayOfWeek enum: [Ned=0, Pon=1, Tor=2, Sre=3, Čet=4, Pet=5, Sob=6]
                     const dayOfWeek = i === 6 ? 0 : i + 1; // Convert: Pon(0)->1, Tor(1)->2, ..., Ned(6)->0
-                    const dayDate = getDateForDayInWeek(weekStart, dayOfWeek);
+                    const dayDate = new Date(weekStart);
+                    dayDate.setDate(dayDate.getDate() + i);
                     const isPast = isDatePast(dayDate);
-                    const isToday = isDateToday(dayDate);
+                    const isToday = todayColumnIndex === i;
                     
                     return (
                       <th key={i} className={`text-left text-sm font-medium py-2 px-2 ${isPast ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
@@ -320,9 +346,10 @@ export default function Schedule() {
                     // day 0=Pon, 1=Tor, ..., 6=Ned
                     // dayOfWeek: 0=Ned, 1=Pon, 2=Tor, ..., 6=Sob
                     const dayOfWeek = day === 6 ? 0 : day + 1;
-                    const dayDate = getDateForDayInWeek(weekStart, dayOfWeek);
+                    const dayDate = new Date(weekStart);
+                    dayDate.setDate(dayDate.getDate() + day);
                     const isPastDay = isDatePast(dayDate);
-                    const isTodayDay = isDateToday(dayDate);
+                    const isTodayDay = todayColumnIndex === day;
                     
                     // Calculate current time position for today
                     const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
@@ -351,17 +378,7 @@ export default function Schedule() {
                           rowSpan={duration}
                           className={`align-top border-t border-l first:border-l-0 border-border px-2 py-2 relative overflow-visible`}
                         >
-                          {showTimeLine && (
-                            <div 
-                              className="absolute left-0 right-0 h-1 bg-red-500 z-50 pointer-events-none shadow-md"
-                              style={{
-                                top: `${timeLineOffset}%`,
-                                transform: 'translateY(-50%)'
-                              }}
-                            >
-                              <div className="absolute w-3 h-3 bg-red-500 rounded-full -ml-1.5 -left-1.5 top-1/2 -translate-y-1/2 shadow-sm" />
-                            </div>
-                          )}
+                          
                           <div 
                             onClick={() => !isPastDay && !isClassPast && matchingClass && matchingSlot && handleClassClick(matchingClass, matchingSlot)}
                             className={`rounded-md border border-border bg-card p-2 transition-colors ${
@@ -389,17 +406,7 @@ export default function Schedule() {
                     } else {
                       row.push(
                         <td key={`d${day}-r${rowIdx}`} className={`border-t border-l first:border-l-0 border-border px-2 py-2 relative overflow-visible`}>
-                          {showTimeLine && (
-                            <div 
-                              className="absolute left-0 right-0 h-1 bg-red-500 z-50 pointer-events-none shadow-md"
-                              style={{
-                                top: `${timeLineOffset}%`,
-                                transform: 'translateY(-50%)'
-                              }}
-                            >
-                              <div className="absolute w-3 h-3 bg-red-500 rounded-full -ml-1.5 -left-1.5 top-1/2 -translate-y-1/2 shadow-sm" />
-                            </div>
-                          )}
+                          
                         </td>
                       );
                     }
@@ -485,6 +492,14 @@ export default function Schedule() {
                   </AlertDescription>
                 </Alert>
               )}
+              {alreadyBooked && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    To vadbo imate že rezervirano in je ni mogoče rezervirati ponovno.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           )}
 
@@ -494,7 +509,7 @@ export default function Schedule() {
             </Button>
             <Button 
               onClick={handleBooking} 
-              disabled={bookingLoading || availability?.isFull}
+              disabled={bookingLoading || availability?.isFull || alreadyBooked}
             >
               {bookingLoading ? "Rezerviram..." : "Potrdi rezervacijo"}
             </Button>

@@ -105,6 +105,7 @@ curl -s -X POST "$KONG_ADMIN/services/group-class-booking-service/routes" \
   --data "name=group-class-booking-routes" \
   --data "paths[]=/api/classes" \
   --data "paths[]=/api/class-bookings" \
+  --data "paths[]=/api/bookings" \
   --data "strip_path=false" > /dev/null
 
 curl -s -X POST "$KONG_ADMIN/services/admin-reporting-service/routes" \

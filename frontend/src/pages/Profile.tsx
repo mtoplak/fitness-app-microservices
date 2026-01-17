@@ -44,6 +44,15 @@ type ProfileData = {
   } | null;
 };
 
+type RawMembership = {
+  package: string | { name: string; price: number };
+  price?: number;
+  startDate: string;
+  endDate: string;
+  status?: string;
+  isActive?: boolean;
+};
+
 type Booking = {
   id: string;
   type: "group_class" | "personal_training";
@@ -108,7 +117,29 @@ export default function Profile() {
   const loadProfile = async () => {
     try {
       const data = await api.getProfile();
-      setProfile(data);
+      // Align membership fetching with /membership page logic
+      const current = await api.getCurrentMembership();
+
+      const picked = current.membership ?? data.membership ?? null;
+      const normalized = picked
+        ? (typeof (picked as RawMembership).package === 'object'
+            ? {
+                package: ((picked as RawMembership).package as { name: string; price: number }).name,
+                price: ((picked as RawMembership).package as { name: string; price: number }).price,
+                startDate: (picked as RawMembership).startDate,
+                endDate: (picked as RawMembership).endDate,
+                isActive: (picked as RawMembership).status === 'active' || (picked as RawMembership).isActive === true
+              }
+            : {
+                package: (picked as RawMembership).package as string,
+                price: (picked as RawMembership).price ?? 0,
+                startDate: (picked as RawMembership).startDate,
+                endDate: (picked as RawMembership).endDate,
+                isActive: (picked as RawMembership).status === 'active' || (picked as RawMembership).isActive === true
+              })
+        : null;
+
+      setProfile({ ...data, membership: normalized });
     } catch (error) {
       console.error("Napaka pri nalaganju profila:", error);
     } finally {
@@ -135,9 +166,9 @@ export default function Profile() {
     void loadBookings();
   }, [bookingsFilter, loadBookings]);
 
-  const loadBookingDetails = async (id: string) => {
+  const loadBookingDetails = async (id: string, type?: "group_class" | "personal_training") => {
     try {
-      const details = await api.getBookingDetails(id);
+      const details = await api.getBookingDetails(id, type);
       setSelectedBooking(details);
       setIsDialogOpen(true);
     } catch (error) {
@@ -347,7 +378,7 @@ export default function Profile() {
               <CardContent className="border-t pt-4">
                 <Link to="/membership">
                   <Button variant="outline" className="w-full">
-                    Upravljaj naročnino
+                    Podrobnosti
                   </Button>
                 </Link>
               </CardContent>
@@ -395,7 +426,7 @@ export default function Profile() {
                   <Card key={booking.id} className="hover:bg-accent/50 transition-colors">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 cursor-pointer" onClick={() => loadBookingDetails(booking.id)}>
+                        <div className="flex-1 cursor-pointer" onClick={() => loadBookingDetails(booking.id, booking.type)}>
                           <div className="flex items-center gap-2 mb-2">
                             <h3 className="font-semibold">
                               {booking.type === "group_class"
@@ -435,7 +466,7 @@ export default function Profile() {
                           </div>
                         </div>
                         <div className="flex flex-col gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => loadBookingDetails(booking.id)}>
+                          <Button variant="ghost" size="sm" onClick={() => loadBookingDetails(booking.id, booking.type)}>
                             Podrobnosti
                           </Button>
                           {canCancel && (

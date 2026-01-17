@@ -133,6 +133,16 @@ export class AppController {
     return this.appService.getUserBookings(targetUserId);
   }
 
+  @Get('bookings/:id')
+  @ApiTags('Bookings')
+  @ApiOperation({ summary: 'Get booking details by ID' })
+  @ApiParam({ name: 'id', description: 'Booking ID' })
+  @ApiResponse({ status: 200, description: 'Booking details', type: BookingResponseDto })
+  @ApiResponse({ status: 404, description: 'Booking not found' })
+  async getBookingById(@Param('id') id: string): Promise<BookingResponseDto> {
+    return this.appService.getBookingById(id);
+  }
+
   @Put('bookings/:id')
   @ApiTags('Bookings')
   @ApiOperation({ summary: 'Update a booking' })

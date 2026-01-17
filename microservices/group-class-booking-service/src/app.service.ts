@@ -36,7 +36,7 @@ export class AppService {
     const userServiceUrl =
       process.env.USER_SERVICE_URL || 'http://user-service:3001';
     try {
-      const response = await fetch(`${userServiceUrl}/users/${userId}/exists`);
+      const response = await fetch(`${userServiceUrl}/api/users/${userId}/exists`);
       if (!response.ok) {
         if (response.status === 404) {
           throw new NotFoundException('User not found');
@@ -281,6 +281,27 @@ export class AppService {
     );
 
     return bookingsWithClass;
+  }
+
+  // Podrobnosti posamezne rezervacije
+  async getBookingById(bookingId: string): Promise<BookingResponseDto> {
+    const booking = await this.bookingModel.findById(bookingId);
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    const groupClass = await this.groupClassModel.findById(booking.classId);
+    return {
+      id: booking._id.toString(),
+      userId: booking.userId,
+      classId: booking.classId,
+      status: booking.status,
+      bookedAt: booking.bookedAt,
+      className: groupClass?.name,
+      classSchedule: groupClass?.scheduledAt,
+      classCapacity: groupClass?.capacity,
+      currentParticipants: groupClass?.currentParticipants,
+    } as any;
   }
 
   // Seznam udeležencev za določeno vadbo (za trenerja)

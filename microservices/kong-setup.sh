@@ -72,6 +72,7 @@ echo "📝 Dodajem rute za Group Class Booking Service..."
 curl -i -X POST $KONG_ADMIN_URL/services/group-class-booking-service/routes \
   --data 'paths[]=/api/classes' \
   --data 'paths[]=/api/class-bookings' \
+  --data 'paths[]=/api/bookings' \
   --data name=group-class-booking-routes \
   --data strip_path=false
 

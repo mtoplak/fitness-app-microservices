@@ -168,18 +168,36 @@ export const api = {
     let membership = null;
     if (user.id) {
       try {
-        const sub = await request<{ id: string; planName: string; status: string; startDate: string; endDate: string } | null>(`/subscriptions/user/${user.id}`);
+        const sub = await request<{ id: string; planName: string; planPrice?: number; status: string; startDate: string; endDate: string } | null>(`/subscriptions/user/${user.id}`);
         if (sub) {
           membership = {
             package: sub.planName,
-            price: 0,
+            price: typeof sub.planPrice === 'number' ? sub.planPrice : 0,
             startDate: sub.startDate,
             endDate: sub.endDate,
             isActive: sub.status === "active"
           };
         }
       } catch {
-        // No subscription
+        // Ignore and try fallback below
+      }
+      // Fallback: check all subscriptions and pick an active one
+      if (!membership) {
+        try {
+          const subs = await request<Array<{ id: string; planName: string; planPrice?: number; status: string; startDate: string; endDate: string }>>(`/subscriptions/user/${user.id}/all`);
+          const active = subs.find(s => s.status === 'active');
+          if (active) {
+            membership = {
+              package: active.planName,
+              price: typeof active.planPrice === 'number' ? active.planPrice : 0,
+              startDate: active.startDate,
+              endDate: active.endDate,
+              isActive: true
+            };
+          }
+        } catch {
+          // still no subscription info
+        }
       }
     }
     return { user, membership };
@@ -222,11 +240,33 @@ export const api = {
     
     return { bookings };
   },
-  
-  getBookingDetails: async (id: string) => {
-    // Try trainer booking first, then class booking
+
+  // Check if current user already has a confirmed booking for a specific group class
+  hasBookedClass: async (classId: string): Promise<boolean> => {
+    const userId = getUserIdFromToken();
+    if (!userId) return false;
     try {
+      const classBookings = await request<Array<{ id: string; classId: string; status: string }>>(`/bookings?userId=${userId}`);
+      return classBookings.some(b => b.classId === classId && b.status === 'confirmed');
+    } catch {
+      return false;
+    }
+  },
+  
+  getBookingDetails: async (id: string, type?: "group_class" | "personal_training") => {
+    if (type === "personal_training") {
       const booking = await request<{ id: string; trainerId: string; trainerName?: string; startTime: string; endTime: string; status: string; notes?: string; createdAt: string; updatedAt?: string }>(`/trainer-bookings/${id}`);
+
+      // Fetch trainer details to display name/email
+      let trainerName = booking.trainerName || "";
+      let trainerEmail = "";
+      try {
+        const trainer = await request<{ id: string; firstName?: string; lastName?: string; fullName?: string; email?: string }>(`/trainers/${booking.trainerId}`);
+        trainerName = trainer.fullName || `${trainer.firstName || ""} ${trainer.lastName || ""}`.trim();
+        trainerEmail = trainer.email || "";
+      } catch {
+        // ignore missing trainer details
+      }
       return {
         id: booking.id,
         type: "personal_training" as const,
@@ -234,13 +274,56 @@ export const api = {
         notes: booking.notes,
         createdAt: booking.createdAt,
         updatedAt: booking.updatedAt || booking.createdAt,
-        trainer: { id: booking.trainerId, name: booking.trainerName || "", email: "" },
+        trainer: { id: booking.trainerId, name: trainerName, email: trainerEmail },
         startTime: booking.startTime,
         endTime: booking.endTime
       };
-    } catch {
-      // Try class booking
-      const booking = await request<{ id: string; classId: string; className?: string; status: string; bookedAt: string }>(`/bookings/${id}`);
+    }
+
+    if (type === "group_class") {
+      const booking = await request<{ id: string; classId: string; className?: string; status: string; bookedAt: string; classSchedule?: string; classCapacity?: number }>(`/bookings/${id}`);
+
+      // Fetch class details to build schedule and trainer info
+      let groupClass: { id: string; name: string; schedule: Array<{ dayOfWeek: number; startTime: string; endTime: string }>; capacity?: number } | undefined;
+      let trainer: { id: string; name: string; email: string } | undefined;
+      try {
+        const cls = await request<{
+          id: string;
+          name: string;
+          description?: string;
+          scheduledAt: string;
+          duration: number;
+          capacity?: number;
+          trainerId?: string;
+          trainerName?: string;
+        }>(`/classes/${booking.classId}`);
+
+        const date = new Date(cls.scheduledAt);
+        const dayOfWeek = date.getDay();
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const startTime = `${hours}:${minutes}`;
+        const endMinutes = date.getMinutes() + (cls.duration || 60);
+        const endHours = date.getHours() + Math.floor(endMinutes / 60);
+        const endTime = `${endHours.toString().padStart(2, '0')}:${(endMinutes % 60).toString().padStart(2, '0')}`;
+
+        groupClass = {
+          id: cls.id,
+          name: cls.name,
+          schedule: [{ dayOfWeek, startTime, endTime }],
+          capacity: cls.capacity,
+        };
+
+        const derivedTrainerName = cls.trainerName || (cls.description?.includes(' with ')
+          ? cls.description.split(' with ')[1]
+          : 'Trener');
+        if (cls.trainerId) {
+          trainer = { id: cls.trainerId, name: derivedTrainerName, email: "" };
+        }
+      } catch {
+        // If class fetch fails, fallback to bookedAt for date only
+      }
+
       return {
         id: booking.id,
         type: "group_class" as const,
@@ -248,7 +331,36 @@ export const api = {
         createdAt: booking.bookedAt,
         updatedAt: booking.bookedAt,
         classDate: booking.bookedAt,
-        className: booking.className
+        className: booking.className,
+        groupClass,
+        trainer
+      };
+    }
+
+    // Fallback: attempt trainer, then class
+    try {
+      const trainer = await request<{ id: string; trainerId: string; trainerName?: string; startTime: string; endTime: string; status: string; notes?: string; createdAt: string; updatedAt?: string }>(`/trainer-bookings/${id}`);
+      return {
+        id: trainer.id,
+        type: "personal_training" as const,
+        status: trainer.status as "confirmed" | "cancelled" | "completed",
+        notes: trainer.notes,
+        createdAt: trainer.createdAt,
+        updatedAt: trainer.updatedAt || trainer.createdAt,
+        trainer: { id: trainer.trainerId, name: trainer.trainerName || "", email: "" },
+        startTime: trainer.startTime,
+        endTime: trainer.endTime
+      };
+    } catch {
+      const cls = await request<{ id: string; classId: string; className?: string; status: string; bookedAt: string }>(`/bookings/${id}`);
+      return {
+        id: cls.id,
+        type: "group_class" as const,
+        status: cls.status as "confirmed" | "cancelled" | "completed",
+        createdAt: cls.bookedAt,
+        updatedAt: cls.bookedAt,
+        classDate: cls.bookedAt,
+        className: cls.className
       };
     }
   },
