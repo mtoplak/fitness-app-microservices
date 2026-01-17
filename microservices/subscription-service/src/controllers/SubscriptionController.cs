@@ -116,10 +116,16 @@ namespace SubscriptionService.Controllers
         [ProducesResponseType(StatusCodes.Status201Created)]
         public async Task<IActionResult> Create([FromBody] CreateSubscriptionRequest request)
         {
+            // Get plan first to retrieve name and price
+            var plan = await _service.GetPlan(request.PlanId);
+            if (plan == null) return BadRequest("Plan not found");
+
             var sub = new Subscription
             {
                 UserId = request.UserId,
                 PlanId = request.PlanId,
+                PlanName = plan.Name,
+                PlanPrice = plan.Price,
                 StartDate = DateTime.UtcNow,
                 Status = "active",
                 AutoRenew = true
@@ -128,20 +134,16 @@ namespace SubscriptionService.Controllers
             var created = await _service.Create(sub);
 
             // Create payment record
-            var plan = await _service.GetPlan(request.PlanId);
-            if (plan != null)
+            var payment = new Payment
             {
-                var payment = new Payment
-                {
-                    UserId = request.UserId,
-                    SubscriptionId = created.Id!,
-                    Amount = plan.Price,
-                    Status = "completed",
-                    PaymentMethod = request.PaymentMethod ?? "credit_card",
-                    TransactionId = Guid.NewGuid().ToString()
-                };
-                await _service.CreatePayment(payment);
-            }
+                UserId = request.UserId,
+                SubscriptionId = created.Id!,
+                Amount = plan.Price,
+                Status = "completed",
+                PaymentMethod = request.PaymentMethod ?? "credit_card",
+                TransactionId = Guid.NewGuid().ToString()
+            };
+            await _service.CreatePayment(payment);
 
             return CreatedAtAction(nameof(Get), new { id = created.Id }, created);
         }

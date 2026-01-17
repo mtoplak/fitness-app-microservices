@@ -13,6 +13,27 @@
 - Node.js 18+ (for local development)
 - .NET 8.0 SDK (for C# services)
 
+### Development Environment (Recommended)
+
+Start all services with ports exposed + frontend + Kong Gateway with automatic CORS:
+
+```bash
+cd microservices
+docker compose -f docker-compose.dev.yml up -d
+```
+
+This starts:
+- Kong Gateway (8000, 8001) with automatic route configuration and CORS
+- Frontend React app (8080)
+- All 6 microservices with ports exposed
+- MongoDB instances (7x) with exposed ports
+- Automatic Kong route setup via kong-configurator
+
+**Access**:
+- Frontend: http://localhost:8080
+- Kong Gateway: http://localhost:8000/api/
+- All services directly accessible on their ports (3001-3006)
+
 ### Production Deployment
 
 Start all services in production mode (no port exposure):
@@ -30,15 +51,6 @@ This starts:
 
 **Access**: Only Kong Gateway ports are exposed. Services accessible via Kong at `http://localhost:8000/api/`
 
-### Local/Dev Environment
-
-Start services with all ports exposed for direct access:
-
-```bash
-cd microservices
-docker compose -f docker-compose.dev.yml up -d
-```
-
 ### 🌱 Seeding Test Data
 
 After starting the services, seed the databases with test data:
@@ -47,7 +59,7 @@ After starting the services, seed the databases with test data:
 cd microservices
 
 # Seed all services (local, with MongoDB ports exposed)
-./seed-all.sh
+./seed-all.sh --docker
 
 # Or seed individual services
 cd user-service && npm run seed

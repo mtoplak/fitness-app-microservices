@@ -59,15 +59,63 @@ done
 echo -e "${GREEN} Ready!${NC}"
 
 echo ""
-echo -e "${YELLOW}⚙️  Configuring Kong Gateway...${NC}"
+echo -e "${YELLOW}⚙️  Configuring Kong Gateway routes...${NC}"
 sleep 3
 
-# Run Kong setup to configure routes
-if [ -f "./update-kong-services.sh" ]; then
-    ./update-kong-services.sh
-else
-    ./kong-setup.sh
-fi
+KONG_ADMIN="http://localhost:8001"
+
+# Delete all existing routes
+for route_id in $(curl -s $KONG_ADMIN/routes 2>/dev/null | jq -r '.data[]?.id' 2>/dev/null); do
+  curl -s -X DELETE "$KONG_ADMIN/routes/$route_id" > /dev/null 2>&1
+done
+
+# Create routes
+curl -s -X POST "$KONG_ADMIN/services/user-service/routes" \
+  --data "name=user-routes" \
+  --data "paths[]=/api/users" \
+  --data "strip_path=false" > /dev/null
+
+curl -s -X POST "$KONG_ADMIN/services/user-service/routes" \
+  --data "name=user-admin-routes" \
+  --data "paths[]=/api/admin/members" \
+  --data "paths[]=/api/admin/trainers" \
+  --data "paths[]=/api/admin/users" \
+  --data "strip_path=false" > /dev/null
+
+curl -s -X POST "$KONG_ADMIN/services/subscription-service/routes" \
+  --data "name=subscription-routes" \
+  --data "paths[]=/api/subscriptions" \
+  --data "paths[]=/api/memberships" \
+  --data "paths[]=/api/packages" \
+  --data "strip_path=false" > /dev/null
+
+curl -s -X POST "$KONG_ADMIN/services/trainer-booking-service/routes" \
+  --data "name=trainer-booking-routes" \
+  --data "paths[]=/api/trainers" \
+  --data "paths[]=/api/trainer-bookings" \
+  --data "strip_path=false" > /dev/null
+
+curl -s -X POST "$KONG_ADMIN/services/workout-schedule-service/routes" \
+  --data "name=workout-schedule-routes" \
+  --data "paths[]=/api/workout-schedules" \
+  --data "paths[]=/api/schedules" \
+  --data "strip_path=false" > /dev/null
+
+curl -s -X POST "$KONG_ADMIN/services/group-class-booking-service/routes" \
+  --data "name=group-class-booking-routes" \
+  --data "paths[]=/api/classes" \
+  --data "paths[]=/api/class-bookings" \
+  --data "strip_path=false" > /dev/null
+
+curl -s -X POST "$KONG_ADMIN/services/admin-reporting-service/routes" \
+  --data "name=admin-reporting-routes" \
+  --data "paths[]=/api/reports" \
+  --data "paths[]=/api/admin/dashboard" \
+  --data "paths[]=/api/admin/stats" \
+  --data "paths[]=/api/admin/export" \
+  --data "strip_path=false" > /dev/null
+
+echo -e "${GREEN}✅ Kong routes configured${NC}"
 
 echo ""
 echo -e "${GREEN}✅ All services are up and running!${NC}"

@@ -30,42 +30,32 @@ namespace SubscriptionService.Scripts
             {
                 new Plan
                 {
-                    Name = "Basic",
-                    Description = "Access to basic gym facilities",
-                    Price = 29.99m,
+                    Name = "Začetni Paket",
+                    Description = "Neomejen dostop do telovadnice z osnovno opremo",
+                    Price = 29.00m,
                     DurationDays = 30,
                     AccessLevel = 1,
-                    Features = new List<string> { "Gym access", "Locker room" },
+                    Features = new List<string> { "Neomejen dostop do telovadnice", "Osnovna oprema", "Prosti treningi", "Garderobne omarice" },
                     IsActive = true
                 },
                 new Plan
                 {
-                    Name = "Premium",
-                    Description = "Full access with personal training sessions",
-                    Price = 59.99m,
+                    Name = "Premium Paket",
+                    Description = "Vse iz začetnega paketa + skupinske vadbe in dodatne ugodnosti",
+                    Price = 49.00m,
                     DurationDays = 30,
                     AccessLevel = 2,
-                    Features = new List<string> { "Gym access", "Locker room", "2 PT sessions/month", "Group classes" },
+                    Features = new List<string> { "Vse iz začetnega paketa", "Skupinske vadbe (do 10 mesečno)", "Nutrition plan pogovor", "Dostop do spalnice", "Brezplačna vadba za prijatelja 2x mesečno" },
                     IsActive = true
                 },
                 new Plan
                 {
-                    Name = "Elite",
-                    Description = "All-inclusive membership with unlimited benefits",
-                    Price = 99.99m,
+                    Name = "Elite Paket",
+                    Description = "Popolna članarina z vsemi ugodnostmi",
+                    Price = 55.00m,
                     DurationDays = 30,
                     AccessLevel = 3,
-                    Features = new List<string> { "Gym access", "Locker room", "Unlimited PT sessions", "Group classes", "Spa access", "Nutrition consulting" },
-                    IsActive = true
-                },
-                new Plan
-                {
-                    Name = "Student",
-                    Description = "Discounted plan for students",
-                    Price = 19.99m,
-                    DurationDays = 30,
-                    AccessLevel = 1,
-                    Features = new List<string> { "Gym access", "Locker room", "Group classes" },
+                    Features = new List<string> { "Vse iz premium paketa", "Neomejene skupinske vadbe", "2x mesečni personal training", "Prehransko svetovanje", "Prioritetno rezerviranje", "Brezplačni fitness meritve" },
                     IsActive = true
                 }
             };

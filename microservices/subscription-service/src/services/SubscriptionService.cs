@@ -19,7 +19,7 @@ namespace SubscriptionService.Services
             var client = new MongoClient(connectionString);
             var db = client.GetDatabase(databaseName);
             _subscriptions = db.GetCollection<Subscription>("subscriptions");
-            _plans = db.GetCollection<Plan>("subscription_plans");
+            _plans = db.GetCollection<Plan>("plans");
             _payments = db.GetCollection<Payment>("payments");
         }
 
@@ -69,6 +69,7 @@ namespace SubscriptionService.Services
             if (plan != null)
             {
                 sub.PlanName = plan.Name;
+                sub.PlanPrice = plan.Price;
                 sub.EndDate = sub.StartDate.AddDays(plan.DurationDays);
             }
             sub.CreatedAt = DateTime.UtcNow;

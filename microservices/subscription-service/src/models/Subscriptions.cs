@@ -20,6 +20,9 @@ namespace SubscriptionService.Models
         [BsonElement("planName")]
         public string? PlanName { get; set; }
 
+        [BsonElement("planPrice")]
+        public decimal PlanPrice { get; set; }
+
         [BsonElement("status")]
         public string Status { get; set; } = "active";
 

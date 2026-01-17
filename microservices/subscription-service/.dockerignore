@@ -4,3 +4,7 @@ node_modules
 .gitignore
 README.md
 npm-debug.log
+bin
+obj
+*.user
+*.suo

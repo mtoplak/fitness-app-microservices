@@ -15,7 +15,8 @@ curl -i -X POST $KONG_ADMIN_URL/services/ \
 echo "📝 Dodajem rute za User Service..."
 curl -i -X POST $KONG_ADMIN_URL/services/user-service/routes \
   --data 'paths[]=/api/users' \
-  --data name=user-routes
+  --data name=user-routes \
+  --data strip_path=false
 
 # ========== SUBSCRIPTION SERVICE ==========
 echo ""
@@ -29,7 +30,8 @@ curl -i -X POST $KONG_ADMIN_URL/services/subscription-service/routes \
   --data 'paths[]=/api/subscriptions' \
   --data 'paths[]=/api/memberships' \
   --data 'paths[]=/api/packages' \
-  --data name=subscription-routes
+  --data name=subscription-routes \
+  --data strip_path=false
 
 # ========== TRAINER BOOKING SERVICE ==========
 echo ""
@@ -42,7 +44,8 @@ echo "📝 Dodajem rute za Trainer Booking Service..."
 curl -i -X POST $KONG_ADMIN_URL/services/trainer-booking-service/routes \
   --data 'paths[]=/api/trainers' \
   --data 'paths[]=/api/trainer-bookings' \
-  --data name=trainer-booking-routes
+  --data name=trainer-booking-routes \
+  --data strip_path=false
 
 # ========== WORKOUT SCHEDULE SERVICE ==========
 echo ""
@@ -55,7 +58,8 @@ echo "📝 Dodajem rute za Workout Schedule Service..."
 curl -i -X POST $KONG_ADMIN_URL/services/workout-schedule-service/routes \
   --data 'paths[]=/api/workout-schedules' \
   --data 'paths[]=/api/schedules' \
-  --data name=workout-schedule-routes
+  --data name=workout-schedule-routes \
+  --data strip_path=false
 
 # ========== GROUP CLASS BOOKING SERVICE ==========
 echo ""
@@ -68,7 +72,8 @@ echo "📝 Dodajem rute za Group Class Booking Service..."
 curl -i -X POST $KONG_ADMIN_URL/services/group-class-booking-service/routes \
   --data 'paths[]=/api/classes' \
   --data 'paths[]=/api/class-bookings' \
-  --data name=group-class-booking-routes
+  --data name=group-class-booking-routes \
+  --data strip_path=false
 
 # ========== ADMIN REPORTING SERVICE ==========
 echo ""
@@ -81,7 +86,21 @@ echo "📝 Dodajem rute za Admin Reporting Service..."
 curl -i -X POST $KONG_ADMIN_URL/services/admin-reporting-service/routes \
   --data 'paths[]=/api/admin' \
   --data 'paths[]=/api/reports' \
-  --data name=admin-reporting-routes
+  --data name=admin-reporting-routes \
+  --data strip_path=false
+
+# ========== LOGGING SERVICE ==========
+echo ""
+echo "📝 Kreiram Logging Service..."
+curl -i -X POST $KONG_ADMIN_URL/services/ \
+  --data name=logging-service \
+  --data url='http://logging-service:3007'
+
+echo "📝 Dodajem rute za Logging Service..."
+curl -i -X POST $KONG_ADMIN_URL/services/logging-service/routes \
+  --data 'paths[]=/api/logs' \
+  --data name=logging-routes \
+  --data strip_path=false
 
 # ========== PLUGINS ==========
 echo ""

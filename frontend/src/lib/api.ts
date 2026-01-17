@@ -404,6 +404,7 @@ export const api = {
         id: string;
         planId: string;
         planName: string;
+        planPrice: number;
         status: string;
         startDate: string;
         endDate: string;
@@ -416,7 +417,7 @@ export const api = {
           package: {
             id: sub.planId,
             name: sub.planName,
-            price: 0
+            price: sub.planPrice
           },
           startDate: sub.startDate,
           endDate: sub.endDate,
@@ -436,6 +437,7 @@ export const api = {
       id: string;
       planId: string;
       planName: string;
+      planPrice: number;
       status: string;
       startDate: string;
       endDate: string;
@@ -446,7 +448,7 @@ export const api = {
     return {
       memberships: subs.map(s => ({
         id: s.id,
-        package: { id: s.planId, name: s.planName, price: 0 },
+        package: { id: s.planId, name: s.planName, price: s.planPrice },
         startDate: s.startDate,
         endDate: s.endDate,
         status: s.status,
