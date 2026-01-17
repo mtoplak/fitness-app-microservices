@@ -134,6 +134,9 @@ export default function Schedule() {
 
   // Update current time every minute
   useEffect(() => {
+    // Set initial time immediately
+    setCurrentTime(new Date());
+    
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000); // Update every minute
@@ -290,7 +293,7 @@ export default function Schedule() {
                     const isToday = isDateToday(dayDate);
                     
                     return (
-                      <th key={i} className={`text-left text-sm font-medium py-2 px-2 ${isToday ? 'bg-primary/10' : ''} ${isPast ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
+                      <th key={i} className={`text-left text-sm font-medium py-2 px-2 ${isPast ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
                         <div className="flex flex-col">
                           <span>{d}</span>
                           <span className="text-xs font-normal">{dayDate.getDate()}.{dayDate.getMonth() + 1}.</span>
@@ -323,7 +326,10 @@ export default function Schedule() {
                     
                     // Calculate current time position for today
                     const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+                    // Show timeline if current time falls within this 30-minute slot
                     const showTimeLine = isTodayDay && currentMinutes >= minute && currentMinutes < minute + 30;
+                    // Calculate percentage for timeline position within the cell (0-100%)
+                    const timeLineOffset = showTimeLine ? ((currentMinutes - minute) / 30) * 100 : 0;
                     
                     // find if a class starts now
                     const starting = timetable.byDay[dayOfWeek].find((c) => c.start === minute);
@@ -343,17 +349,17 @@ export default function Schedule() {
                         <td
                           key={`d${day}-r${rowIdx}`}
                           rowSpan={duration}
-                          className={`align-top border-t border-l first:border-l-0 border-border px-2 py-2 ${isTodayDay ? 'bg-primary/5' : ''} relative`}
+                          className={`align-top border-t border-l first:border-l-0 border-border px-2 py-2 relative overflow-visible`}
                         >
                           {showTimeLine && (
                             <div 
-                              className="absolute left-0 right-0 z-20 flex items-center"
+                              className="absolute left-0 right-0 h-1 bg-red-500 z-50 pointer-events-none shadow-md"
                               style={{
-                                top: `${((currentMinutes - minute) / 30) * 100}%`
+                                top: `${timeLineOffset}%`,
+                                transform: 'translateY(-50%)'
                               }}
                             >
-                              <div className="w-2 h-2 bg-red-500 rounded-full -ml-1" />
-                              <div className="flex-1 h-0.5 bg-red-500" />
+                              <div className="absolute w-3 h-3 bg-red-500 rounded-full -ml-1.5 -left-1.5 top-1/2 -translate-y-1/2 shadow-sm" />
                             </div>
                           )}
                           <div 
@@ -382,16 +388,16 @@ export default function Schedule() {
                       row.push(null);
                     } else {
                       row.push(
-                        <td key={`d${day}-r${rowIdx}`} className={`border-t border-l first:border-l-0 border-border px-2 py-2 ${isTodayDay ? 'bg-primary/5' : ''} relative`}>
+                        <td key={`d${day}-r${rowIdx}`} className={`border-t border-l first:border-l-0 border-border px-2 py-2 relative overflow-visible`}>
                           {showTimeLine && (
                             <div 
-                              className="absolute left-0 right-0 z-20 flex items-center"
+                              className="absolute left-0 right-0 h-1 bg-red-500 z-50 pointer-events-none shadow-md"
                               style={{
-                                top: `${((currentMinutes - minute) / 30) * 100}%`
+                                top: `${timeLineOffset}%`,
+                                transform: 'translateY(-50%)'
                               }}
                             >
-                              <div className="w-2 h-2 bg-red-500 rounded-full -ml-1" />
-                              <div className="flex-1 h-0.5 bg-red-500" />
+                              <div className="absolute w-3 h-3 bg-red-500 rounded-full -ml-1.5 -left-1.5 top-1/2 -translate-y-1/2 shadow-sm" />
                             </div>
                           )}
                         </td>

@@ -324,7 +324,6 @@ services:
     networks:
       - fitness-network
 
-  # Frontend
   frontend:
     build:
       context: ../frontend
@@ -334,6 +333,17 @@ services:
       - "8080:8080"
     environment:
       VITE_API_BASE_URL: http://localhost:8000/api
+      DOCKER_ENV: "true"
+    volumes:
+      - ../frontend/src:/app/src
+      - ../frontend/public:/app/public
+      - ../frontend/index.html:/app/index.html
+      - ../frontend/vite.config.ts:/app/vite.config.ts
+      - ../frontend/tailwind.config.ts:/app/tailwind.config.ts
+      - ../frontend/postcss.config.js:/app/postcss.config.js
+      - ../frontend/tsconfig.json:/app/tsconfig.json
+      - ../frontend/tsconfig.app.json:/app/tsconfig.app.json
+      - ../frontend/tsconfig.node.json:/app/tsconfig.node.json
     networks:
       - fitness-network
     depends_on:

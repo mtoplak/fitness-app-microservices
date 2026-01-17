@@ -8,6 +8,13 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    hmr: process.env.DOCKER_ENV
+      ? {
+          host: "localhost",
+          port: 8080,
+          protocol: "ws",
+        }
+      : undefined,
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
