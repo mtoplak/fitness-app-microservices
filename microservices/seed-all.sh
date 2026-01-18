@@ -37,11 +37,15 @@ if [ "$1" == "--docker" ]; then
     
     # Seed Group Class Booking Service
     echo "4️⃣  Seeding Group Class Booking Service..."
-    docker compose -f docker-compose.dev.yml exec group-class-booking-service npx tsx src/scripts/seed.ts
+    docker compose -f docker-compose.dev.yml exec \
+      -e USER_SERVICE_MONGODB_URI="mongodb://admin:admin123@mongo-users:27017/fitness_users?authSource=admin" \
+      group-class-booking-service npx tsx src/scripts/seed.ts
     
     # Seed Workout Schedule Service
     echo "5️⃣  Seeding Workout Schedule Service..."
-    docker compose -f docker-compose.dev.yml exec workout-schedule-service npx tsx src/scripts/seed.ts
+    docker compose -f docker-compose.dev.yml exec \
+      -e USER_SERVICE_MONGODB_URI="mongodb://admin:admin123@mongo-users:27017/fitness_users?authSource=admin" \
+      workout-schedule-service npx tsx src/scripts/seed.ts
     
 else
     echo -e "${YELLOW}Running locally (make sure MongoDB is accessible)...${NC}"
@@ -72,11 +76,11 @@ else
     
     # Seed Group Class Booking Service
     echo "4️⃣  Seeding Group Class Booking Service..."
-    cd group-class-booking-service && npx tsx src/scripts/seed.ts && cd ..
+    cd group-class-booking-service && USER_SERVICE_MONGODB_URI="mongodb://admin:admin123@localhost:27017/fitness_users?authSource=admin" npx tsx src/scripts/seed.ts && cd ..
     
     # Seed Workout Schedule Service
     echo "5️⃣  Seeding Workout Schedule Service..."
-    cd workout-schedule-service && npx tsx src/scripts/seed.ts && cd ..
+    cd workout-schedule-service && USER_SERVICE_MONGODB_URI="mongodb://admin:admin123@localhost:27017/fitness_users?authSource=admin" npx tsx src/scripts/seed.ts && cd ..
 fi
 
 echo ""

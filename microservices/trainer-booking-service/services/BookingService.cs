@@ -1,6 +1,7 @@
 using MongoDB.Driver;
 using Microsoft.Extensions.Options;
 using TrainerBookingService.Models;
+using System.Linq;
 
 namespace TrainerBookingService.Services
 {
@@ -86,6 +87,44 @@ namespace TrainerBookingService.Services
             return booking;
         }
 
+        public List<AvailabilitySlot> GetAvailability(string trainerId, DateTime from, DateTime to)
+        {
+            var utcFrom = EnsureUtc(from);
+            var utcTo = EnsureUtc(to);
+            if (utcTo <= utcFrom)
+                throw new Exception("Invalid availability range.");
+
+            var bookingFilter = Builders<Booking>.Filter.And(
+                Builders<Booking>.Filter.Eq(b => b.TrainerId, trainerId),
+                Builders<Booking>.Filter.Lt(b => b.StartTime, utcTo),
+                Builders<Booking>.Filter.Gt(b => b.EndTime, utcFrom),
+                Builders<Booking>.Filter.Eq(b => b.Status, "confirmed")
+            );
+            var bookings = _bookings.Find(bookingFilter).ToList();
+
+            var slots = new List<AvailabilitySlot>();
+            var current = utcFrom;
+            while (current < utcTo)
+            {
+                var slotEnd = current.AddHours(1);
+                if (slotEnd > utcTo)
+                    slotEnd = utcTo;
+
+                var isBooked = bookings.Any(b => b.StartTime < slotEnd && b.EndTime > current);
+                slots.Add(new AvailabilitySlot
+                {
+                    Date = current.ToString("yyyy-MM-dd"),
+                    StartTime = current,
+                    EndTime = slotEnd,
+                    IsBooked = isBooked
+                });
+
+                current = current.AddHours(1);
+            }
+
+            return slots;
+        }
+
         public Booking? Cancel(string id)
         {
             var booking = Get(id);
@@ -99,5 +138,15 @@ namespace TrainerBookingService.Services
 
         public void Delete(string id) =>
             _bookings.DeleteOne(b => b.Id == id);
+
+        private static DateTime EnsureUtc(DateTime value)
+        {
+            return value.Kind switch
+            {
+                DateTimeKind.Utc => value,
+                DateTimeKind.Local => value.ToUniversalTime(),
+                _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+            };
+        }
     }
 }

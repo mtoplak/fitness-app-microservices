@@ -11,7 +11,7 @@ namespace SubscriptionService.Scripts
             Console.WriteLine("🌱 Seeding Subscription Service...");
             
             var mongoUri = Environment.GetEnvironmentVariable("MONGODB_URI") 
-                ?? "mongodb://admin:admin123@localhost:27019/fitness_subscriptions?authSource=admin";
+                ?? "mongodb://admin:admin123@mongo-subscriptions:27017/fitness_subscriptions?authSource=admin";
             
             var client = new MongoClient(mongoUri);
             var database = client.GetDatabase("fitness_subscriptions");
@@ -63,15 +63,14 @@ namespace SubscriptionService.Scripts
             await plansCollection.InsertManyAsync(plans);
             Console.WriteLine($"✅ Created {plans.Length} subscription plans");
             
-            // Note: In a real scenario, you'd need actual user IDs from the user-service
-            // For demo purposes, creating some sample subscriptions with placeholder user IDs
+            // Seed with user-service IDs so subscriptions link correctly.
             var sampleUserIds = new[]
             {
-                ObjectId.GenerateNewId().ToString(),
-                ObjectId.GenerateNewId().ToString(),
-                ObjectId.GenerateNewId().ToString(),
-                ObjectId.GenerateNewId().ToString(),
-                ObjectId.GenerateNewId().ToString()
+                "696d030d92e2df6f97219a94",
+                "696d030d92e2df6f97219a96",
+                "696d030d92e2df6f97219a98",
+                "696d030d92e2df6f97219a9a",
+                "696d030d92e2df6f97219a9c"
             };
             
             var subscriptions = new List<Subscription>();

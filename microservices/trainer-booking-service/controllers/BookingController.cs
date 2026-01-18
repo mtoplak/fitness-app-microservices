@@ -40,6 +40,37 @@ namespace TrainerBookingService.Controllers
         }
 
         /// <summary>
+        /// Get trainer availability slots
+        /// </summary>
+        [HttpGet("trainers/{id}/availability")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public ActionResult<List<AvailabilitySlot>> GetTrainerAvailability(
+            string id,
+            [FromQuery] DateTime from,
+            [FromQuery] DateTime to)
+        {
+            var trainer = _service.GetTrainer(id);
+            if (trainer == null) return NotFound();
+
+            if (from == default || to == default || to <= from)
+            {
+                return BadRequest(new { message = "Invalid availability range." });
+            }
+
+            try
+            {
+                var slots = _service.GetAvailability(id, from, to);
+                return Ok(slots);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Create a new trainer profile
         /// </summary>
         [HttpPost("trainers")]
