@@ -11,12 +11,20 @@ import {
   HttpStatus,
   Headers,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { AppService } from './app.service';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { Public } from './auth/public.decorator';
 import { Roles } from './auth/roles.decorator';
+import { CurrentUser, type RequestUser } from './auth/user.decorator';
 
 @ApiBearerAuth()
 @Roles('admin')  // All routes require admin role by default
@@ -117,8 +125,8 @@ export class AppController {
   @ApiTags('Statistics')
   @ApiOperation({ summary: 'Get dashboard statistics' })
   @ApiResponse({ status: 200, description: 'Dashboard stats' })
-  async getDashboardStats() {
-    return this.appService.getDashboardStats();
+  async getDashboardStats(@Headers('authorization') authorization?: string) {
+    return this.appService.getDashboardStats(authorization);
   }
 
   @Get('stats/revenue')
@@ -171,5 +179,76 @@ export class AppController {
   @ApiResponse({ status: 200, description: 'Cache cleared' })
   async clearCache() {
     return { message: 'Cache cleared successfully' };
+  }
+
+  // --- Admin Classes ---
+
+  @Get('admin/classes')
+  @ApiTags('Admin Classes')
+  @ApiOperation({ summary: 'Get admin class management data' })
+  @ApiResponse({ status: 200, description: 'Classes and statistics' })
+  async getAdminClasses(@Headers('authorization') authorization?: string) {
+    return this.appService.getAdminClasses(authorization);
+  }
+
+  @Put('admin/classes/:id/approve')
+  @ApiTags('Admin Classes')
+  @ApiOperation({ summary: 'Approve a class' })
+  @ApiParam({ name: 'id', description: 'Class ID' })
+  @ApiResponse({ status: 200, description: 'Class approved' })
+  async approveAdminClass(
+    @Param('id') id: string,
+    @Body() body: { comment?: string },
+    @CurrentUser() user: RequestUser,
+    @Headers('authorization') authorization?: string,
+  ) {
+    return this.appService.approveAdminClass(id, user, body?.comment, authorization);
+  }
+
+  @Put('admin/classes/:id/reject')
+  @ApiTags('Admin Classes')
+  @ApiOperation({ summary: 'Reject a class' })
+  @ApiParam({ name: 'id', description: 'Class ID' })
+  @ApiResponse({ status: 200, description: 'Class rejected' })
+  async rejectAdminClass(
+    @Param('id') id: string,
+    @Body() body: { comment?: string },
+    @CurrentUser() user: RequestUser,
+    @Headers('authorization') authorization?: string,
+  ) {
+    return this.appService.rejectAdminClass(id, user, body?.comment, authorization);
+  }
+
+  @Put('admin/classes/:id')
+  @ApiTags('Admin Classes')
+  @ApiOperation({ summary: 'Update a class' })
+  @ApiParam({ name: 'id', description: 'Class ID' })
+  @ApiResponse({ status: 200, description: 'Class updated' })
+  async updateAdminClass(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      name?: string;
+      description?: string;
+      difficulty?: 'easy' | 'medium' | 'hard';
+      duration?: number;
+      capacity?: number;
+      status?: string;
+    },
+    @Headers('authorization') authorization?: string,
+  ) {
+    return this.appService.updateAdminClass(id, body, authorization);
+  }
+
+  @Delete('admin/classes/:id')
+  @ApiTags('Admin Classes')
+  @ApiOperation({ summary: 'Delete a class' })
+  @ApiParam({ name: 'id', description: 'Class ID' })
+  @ApiResponse({ status: 200, description: 'Class deleted' })
+  async deleteAdminClass(
+    @Param('id') id: string,
+    @Headers('authorization') authorization?: string,
+  ) {
+    return this.appService.deleteAdminClass(id, authorization);
   }
 }

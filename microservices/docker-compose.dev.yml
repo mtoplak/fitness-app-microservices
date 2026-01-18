@@ -316,6 +316,7 @@ services:
     environment:
       MONGODB_URI: mongodb://admin:admin123@mongo-admin-reports:27017/fitness_admin_reports?authSource=admin
       JWT_SECRET: dev-secret-key
+      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
       PORT: 3006
       NODE_ENV: development
     depends_on:
