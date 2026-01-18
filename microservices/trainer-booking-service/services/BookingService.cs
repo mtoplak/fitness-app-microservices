@@ -99,5 +99,48 @@ namespace TrainerBookingService.Services
 
         public void Delete(string id) =>
             _bookings.DeleteOne(b => b.Id == id);
+
+        // Get available time slots for a trainer
+        public List<object> GetAvailableSlots(string trainerId, DateTime fromDate, DateTime toDate)
+        {
+            // Get all confirmed bookings for this trainer in the date range
+            var bookedSlots = _bookings.Find(b => 
+                b.TrainerId == trainerId && 
+                b.Status == "confirmed" &&
+                b.StartTime >= fromDate &&
+                b.StartTime < toDate
+            ).ToList();
+
+            var availableSlots = new List<object>();
+
+            // Generate slots for each day from 9 AM to 8 PM (every hour)
+            for (var date = fromDate.Date; date < toDate.Date; date = date.AddDays(1))
+            {
+                for (var hour = 9; hour < 20; hour++)
+                {
+                    var slotStart = date.AddHours(hour);
+                    var slotEnd = slotStart.AddHours(1);
+
+                    // Check if this slot conflicts with any booking
+                    var isBooked = bookedSlots.Any(b => 
+                        (slotStart >= b.StartTime && slotStart < b.EndTime) ||
+                        (slotEnd > b.StartTime && slotEnd <= b.EndTime) ||
+                        (slotStart <= b.StartTime && slotEnd >= b.EndTime)
+                    );
+
+                    if (!isBooked)
+                    {
+                        availableSlots.Add(new 
+                        { 
+                            startTime = slotStart,
+                            endTime = slotEnd,
+                            available = true
+                        });
+                    }
+                }
+            }
+
+            return availableSlots;
+        }
     }
 }

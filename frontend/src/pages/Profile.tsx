@@ -112,6 +112,7 @@ export default function Profile() {
   const [bookingsFilter, setBookingsFilter] = useState<"all" | "upcoming">("upcoming");
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [bookingToCancel, setBookingToCancel] = useState<string | null>(null);
+  const [bookingTypeToCancel, setBookingTypeToCancel] = useState<"group_class" | "personal_training" | null>(null);
   const { toast } = useToast();
 
   const loadProfile = async () => {
@@ -197,7 +198,7 @@ export default function Profile() {
     if (!bookingToCancel) return;
 
     try {
-      await api.cancelBooking(bookingToCancel);
+      await api.cancelBooking(bookingToCancel, bookingTypeToCancel || undefined);
       
       toast({
         title: "Uspešno",
@@ -209,6 +210,7 @@ export default function Profile() {
       setIsCancelDialogOpen(false);
       setIsDialogOpen(false);
       setBookingToCancel(null);
+      setBookingTypeToCancel(null);
       setSelectedBooking(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Napaka pri preklicu rezervacije";
@@ -220,8 +222,9 @@ export default function Profile() {
     }
   };
 
-  const openCancelDialog = (bookingId: string) => {
+  const openCancelDialog = (bookingId: string, bookingType: "group_class" | "personal_training") => {
     setBookingToCancel(bookingId);
+    setBookingTypeToCancel(bookingType);
     setIsCancelDialogOpen(true);
   };
 
@@ -417,10 +420,10 @@ export default function Profile() {
           ) : (
             <div className="space-y-4">
               {bookings.map((booking) => {
-                const canCancel = booking.type === "group_class" && 
-                                  booking.status === "confirmed" && 
-                                  booking.classDate && 
-                                  new Date(booking.classDate) > new Date();
+                const canCancel = booking.status === "confirmed" && (
+                  (booking.type === "group_class" && booking.classDate && new Date(booking.classDate) > new Date()) ||
+                  (booking.type === "personal_training" && booking.startTime && new Date(booking.startTime) > new Date())
+                );
                 
                 return (
                   <Card key={booking.id} className="hover:bg-accent/50 transition-colors">
@@ -475,7 +478,7 @@ export default function Profile() {
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                openCancelDialog(booking.id);
+                                openCancelDialog(booking.id, booking.type);
                               }}
                               className="text-destructive hover:text-destructive"
                             >
@@ -587,17 +590,17 @@ export default function Profile() {
                 <p>Posodobljeno: {formatDate(selectedBooking.updatedAt)}</p>
               </div>
 
-              {/* Gumb za preklic rezervacije - samo za skupinske vadbe in potrjene rezervacije */}
-              {selectedBooking.type === "group_class" && 
-               selectedBooking.status === "confirmed" && 
-               selectedBooking.classDate && 
-               new Date(selectedBooking.classDate) > new Date() && (
+              {/* Gumb za preklic rezervacije - za skupinske vadbe in osebne treninge */}
+              {selectedBooking.status === "confirmed" && (
+                (selectedBooking.type === "group_class" && selectedBooking.classDate && new Date(selectedBooking.classDate) > new Date()) ||
+                (selectedBooking.type === "personal_training" && selectedBooking.startTime && new Date(selectedBooking.startTime) > new Date())
+              ) && (
                 <div className="border-t pt-4 flex justify-end">
                   <Button
                     variant="destructive"
                     onClick={(e) => {
                       e.stopPropagation();
-                      openCancelDialog(selectedBooking.id);
+                      openCancelDialog(selectedBooking.id, selectedBooking.type);
                     }}
                   >
                     Prekliči rezervacijo
@@ -620,7 +623,7 @@ export default function Profile() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setBookingToCancel(null)}>
+            <AlertDialogCancel onClick={() => { setBookingToCancel(null); setBookingTypeToCancel(null); }}>
               Ne, ohrani
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleCancelBooking} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">

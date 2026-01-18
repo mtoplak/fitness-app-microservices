@@ -50,6 +50,27 @@ namespace TrainerBookingService.Controllers
             return CreatedAtAction(nameof(GetTrainer), new { id = created.Id }, created);
         }
 
+        /// <summary>
+        /// Get trainer availability slots
+        /// </summary>
+        [HttpGet("trainers/{trainerId}/availability")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public ActionResult<object> GetTrainerAvailability(
+            string trainerId,
+            [FromQuery] DateTime? from,
+            [FromQuery] DateTime? to)
+        {
+            var trainer = _service.GetTrainer(trainerId);
+            if (trainer == null) return NotFound(new { message = "Trainer not found" });
+
+            var fromDate = from ?? DateTime.UtcNow.Date;
+            var toDate = to ?? fromDate.AddDays(7);
+
+            var slots = _service.GetAvailableSlots(trainerId, fromDate, toDate);
+            return Ok(new { slots });
+        }
+
         // ========== BOOKINGS ==========
 
         /// <summary>

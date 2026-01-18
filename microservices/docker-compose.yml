@@ -42,7 +42,7 @@ services:
       start_period: 10s
 
   kong-migrations:
-    image: kong:3.3.1-alpine
+    image: kong/kong-gateway:3.4.0.0
     container_name: kong-migrations
     command: kong migrations bootstrap
     environment:
@@ -59,7 +59,7 @@ services:
     restart: on-failure
 
   kong:
-    image: kong:3.3.1-alpine
+    image: kong/kong-gateway:3.4.0.0
     container_name: kong-gateway
     restart: on-failure
     environment:
@@ -98,6 +98,7 @@ services:
 
   konga:
     image: pantsel/konga:latest
+    platform: linux/amd64  # Force AMD64 emulation on ARM64 (Apple Silicon)
     container_name: konga-ui
     environment:
       NODE_ENV: development
@@ -183,6 +184,7 @@ services:
       MONGODB_URI: mongodb://mongodb-subscriptions:27017/fitness-subscriptions
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
       PORT: 3002
+      ASPNETCORE_HTTP_PORTS: 3002
       NODE_ENV: development
       USER_SERVICE_URL: http://user-service:3001
       RABBITMQ_URL: amqp://fitness:fitness123@rabbitmq:5672
@@ -220,6 +222,7 @@ services:
       MONGODB_URI: mongodb://mongodb-trainer-bookings:27017/fitness-trainer-bookings
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
       PORT: 3003
+      ASPNETCORE_HTTP_PORTS: 3003
       NODE_ENV: development
       USER_SERVICE_URL: http://user-service:3001
       SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
@@ -465,6 +468,42 @@ services:
         configure_service "workout-schedule-service" "http://workout-schedule-service:3004" "/api/schedules"
         configure_service "group-class-booking-service" "http://group-class-booking-service:3005" "/api/classes"
         configure_service "admin-reporting-service" "http://admin-reporting-service:3006" "/api/admin"
+        
+        # Add additional route for trainer-bookings to same service
+        echo "📝 Adding trainer-bookings route..."
+        curl -i -X POST http://kong-gateway:8001/services/trainer-booking-service/routes \
+          --data "paths[]=/api/trainer-bookings" \
+          --data "strip_path=false" 2>/dev/null | head -n 1
+        
+        # Add additional route for bookings to classes service  
+        echo "📝 Adding bookings route..."
+        curl -i -X POST http://kong-gateway:8001/services/group-class-booking-service/routes \
+          --data "paths[]=/api/bookings" \
+          --data "strip_path=true" 2>/dev/null | head -n 1
+        
+        echo "🔧 Configuring CORS plugin..."
+        # Enable CORS for all routes with multiple origins
+        curl -i -X POST http://kong-gateway:8001/plugins/ \
+          --data "name=cors" \
+          --data "config.origins=http://localhost:8080" \
+          --data "config.origins=http://localhost:8081" \
+          --data "config.origins=http://localhost:5173" \
+          --data "config.methods=GET" \
+          --data "config.methods=POST" \
+          --data "config.methods=PUT" \
+          --data "config.methods=DELETE" \
+          --data "config.methods=PATCH" \
+          --data "config.methods=OPTIONS" \
+          --data "config.headers=Accept" \
+          --data "config.headers=Accept-Version" \
+          --data "config.headers=Content-Length" \
+          --data "config.headers=Content-Type" \
+          --data "config.headers=Date" \
+          --data "config.headers=Authorization" \
+          --data "config.headers=X-Correlation-ID" \
+          --data "config.exposed_headers=X-Auth-Token" \
+          --data "config.credentials=true" \
+          --data "config.max_age=3600" 2>/dev/null | head -n 1
         
         echo "✅ Kong configuration completed!"
         echo "🌐 API Gateway ready at http://localhost:8000"
