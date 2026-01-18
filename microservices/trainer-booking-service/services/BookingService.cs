@@ -63,6 +63,19 @@ namespace TrainerBookingService.Services
                 .SortBy(b => b.StartTime)
                 .ToList();
 
+        public List<Booking> GetByDateRange(DateTime start, DateTime end)
+        {
+            var utcStart = EnsureUtc(start);
+            var utcEnd = EnsureUtc(end);
+
+            var filter = Builders<Booking>.Filter.And(
+                Builders<Booking>.Filter.Gte(b => b.StartTime, utcStart),
+                Builders<Booking>.Filter.Lte(b => b.StartTime, utcEnd)
+            );
+
+            return _bookings.Find(filter).ToList();
+        }
+
         public Booking Create(Booking booking)
         {
             // Check for conflicts

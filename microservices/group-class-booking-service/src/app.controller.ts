@@ -200,6 +200,21 @@ export class AppController {
     return this.appService.checkClassAvailability(classId);
   }
 
+  // --- Reports ---
+
+  @Roles('admin')
+  @Get('reports/attendance')
+  @ApiTags('Reports')
+  @ApiOperation({ summary: 'Get attendance bookings for reporting' })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  async getAttendanceReport(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.appService.getAttendanceReport(startDate, endDate);
+  }
+
   @Public()
   @Get('classes')
   @ApiTags('Classes')

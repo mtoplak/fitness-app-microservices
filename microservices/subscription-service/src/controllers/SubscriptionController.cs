@@ -243,6 +243,26 @@ namespace SubscriptionService.Controllers
             Ok(await _service.GetPaymentsBySubscriptionId(subscriptionId));
 
         /// <summary>
+        /// Get revenue report for a date range
+        /// </summary>
+        [HttpGet("reports/revenue")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> GetRevenueReport(
+            [FromQuery] DateTime? startDate,
+            [FromQuery] DateTime? endDate)
+        {
+            var start = (startDate ?? DateTime.UtcNow.AddMonths(-3)).Date;
+            var end = (endDate ?? DateTime.UtcNow).Date;
+            if (end < start)
+            {
+                return BadRequest("Invalid date range.");
+            }
+
+            return Ok(await _service.GetRevenueReport(start, end));
+        }
+
+        /// <summary>
         /// Health check
         /// </summary>
         [HttpGet("/health")]

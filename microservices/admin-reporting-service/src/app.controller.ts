@@ -9,6 +9,7 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  Headers,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { AppService } from './app.service';
@@ -49,6 +50,32 @@ export class AppController {
   @ApiResponse({ status: 200, description: 'List of all reports' })
   async findAllReports() {
     return this.appService.findAllReports();
+  }
+
+  @Get('reports/revenue')
+  @ApiTags('Reports')
+  @ApiOperation({ summary: 'Get revenue report' })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  async getRevenueReport(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Headers('authorization') authorization?: string,
+  ) {
+    return this.appService.getRevenueReport(startDate, endDate, authorization);
+  }
+
+  @Get('reports/attendance')
+  @ApiTags('Reports')
+  @ApiOperation({ summary: 'Get attendance report' })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  async getAttendanceReport(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Headers('authorization') authorization?: string,
+  ) {
+    return this.appService.getAttendanceReport(startDate, endDate, authorization);
   }
 
   @Get('reports/:id')
