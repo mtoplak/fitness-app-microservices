@@ -344,6 +344,39 @@ services:
       - ../frontend/tsconfig.json:/app/tsconfig.json
       - ../frontend/tsconfig.app.json:/app/tsconfig.app.json
       - ../frontend/tsconfig.node.json:/app/tsconfig.node.json
+    develop:
+      watch:
+        - action: sync
+          path: ../frontend/src
+          target: /app/src
+        - action: sync
+          path: ../frontend/public
+          target: /app/public
+        - action: sync
+          path: ../frontend/index.html
+          target: /app/index.html
+        - action: sync
+          path: ../frontend/vite.config.ts
+          target: /app/vite.config.ts
+        - action: sync
+          path: ../frontend/tailwind.config.ts
+          target: /app/tailwind.config.ts
+        - action: sync
+          path: ../frontend/postcss.config.js
+          target: /app/postcss.config.js
+        - action: sync
+          path: ../frontend/tsconfig.json
+          target: /app/tsconfig.json
+        - action: sync
+          path: ../frontend/tsconfig.app.json
+          target: /app/tsconfig.app.json
+        - action: sync
+          path: ../frontend/tsconfig.node.json
+          target: /app/tsconfig.node.json
+        - action: rebuild
+          path: ../frontend/package.json
+        - action: rebuild
+          path: ../frontend/package-lock.json
     networks:
       - fitness-network
     depends_on:
