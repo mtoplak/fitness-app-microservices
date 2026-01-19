@@ -26,6 +26,7 @@ type GroupClass = {
   name: string;
   schedule: WeeklyTimeSlot[];
   capacity?: number;
+  scheduledAt: string; // ISO timestamp for the specific class instance
   trainerUserId?: {
     _id: string;
     firstName?: string;
@@ -186,8 +187,8 @@ export default function Schedule() {
       return;
     }
 
-    // Get the actual date for this class in the current week
-    const classDate = getDateForDayInWeek(weekStart, slot.dayOfWeek);
+    // Use the actual scheduledAt date from the class instance
+    const classDate = new Date(groupClass.scheduledAt);
     
     // Check if date is in the past
     if (isDatePast(classDate)) {
@@ -259,17 +260,34 @@ export default function Schedule() {
     const rows: number[] = [];
     for (let m = startOfDay; m <= endOfDay; m += step) rows.push(m);
 
-    const byDay: Record<number, Array<{ className: string; start: number; end: number }>> = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+    // Calculate week end date for filtering
+    const weekEndDate = new Date(weekStart);
+    weekEndDate.setDate(weekEndDate.getDate() + 7);
+    weekEndDate.setHours(23, 59, 59, 999);
+
+    const byDay: Record<number, Array<{ className: string; classId: string; start: number; end: number; scheduledAt: string }>> = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
     for (const c of classes) {
+      // Filter classes by current week using scheduledAt timestamp
+      const classDate = new Date(c.scheduledAt);
+      if (classDate < weekStart || classDate >= weekEndDate) {
+        continue; // Skip classes not in current week
+      }
+
       for (const s of c.schedule || []) {
-        byDay[s.dayOfWeek].push({ className: c.name, start: toMinutes(s.startTime), end: toMinutes(s.endTime) });
+        byDay[s.dayOfWeek].push({ 
+          className: c.name, 
+          classId: c._id,
+          start: toMinutes(s.startTime), 
+          end: toMinutes(s.endTime),
+          scheduledAt: c.scheduledAt 
+        });
       }
     }
     for (let d = 0; d < 7; d++) {
       byDay[d].sort((a, b) => a.start - b.start);
     }
     return { rows, byDay };
-  }, [classes]);
+  }, [classes, weekStart]);
 
   return (
     <section className="bg-gradient-to-br from-background via-muted/30 to-background">
@@ -364,10 +382,9 @@ export default function Schedule() {
                     const covering = timetable.byDay[dayOfWeek].find((c) => c.start < minute && c.end > minute);
                     if (starting) {
                       const duration = Math.max(1, Math.ceil((starting.end - starting.start) / 30));
-                      const matchingClass = classes.find(c => c.name === starting.className);
-                      const matchingSlot = matchingClass?.schedule.find(s => 
-                        s.dayOfWeek === dayOfWeek && toMinutes(s.startTime) === starting.start
-                      );
+                      // Find the actual class by _id from timetable, not by name (multiple instances can have same name)
+                      const matchingClass = classes.find(c => c._id === starting.classId);
+                      const matchingSlot = matchingClass?.schedule[0]; // There's only one slot per class instance
                       
                       // Check if this class has already ended today
                       const isClassPast = isTodayDay && starting.end <= currentMinutes;

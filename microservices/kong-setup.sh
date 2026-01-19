@@ -30,6 +30,8 @@ curl -i -X POST $KONG_ADMIN_URL/services/subscription-service/routes \
   --data 'paths[]=/api/subscriptions' \
   --data 'paths[]=/api/memberships' \
   --data 'paths[]=/api/packages' \
+  --data 'paths[]=/api/plans' \
+  --data 'paths[]=/api/payments' \
   --data name=subscription-routes \
   --data strip_path=false
 

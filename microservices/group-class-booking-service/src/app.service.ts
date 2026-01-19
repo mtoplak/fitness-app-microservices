@@ -36,12 +36,16 @@ export class AppService {
     const userServiceUrl =
       process.env.USER_SERVICE_URL || 'http://user-service:3001';
     try {
-      const response = await fetch(`${userServiceUrl}/api/users/${userId}/exists`);
+      const response = await fetch(
+        `${userServiceUrl}/api/users/${userId}/exists`,
+      );
       if (!response.ok) {
         if (response.status === 404) {
           throw new NotFoundException('User not found');
         }
-        this.logger.warn(`User validation failed with status ${response.status}`);
+        this.logger.warn(
+          `User validation failed with status ${response.status}`,
+        );
         // Allow validation if service is down? Secure approach: Fail.
         throw new BadRequestException('Could not validate user');
       }
@@ -146,7 +150,9 @@ export class AppService {
     });
 
     if (existingBooking) {
-      throw new BadRequestException('You already have a booking for this class');
+      throw new BadRequestException(
+        'You already have a booking for this class',
+      );
     }
 
     // Ustvari novo rezervacijo
@@ -176,26 +182,18 @@ export class AppService {
     };
   }
 
-  async updateBooking(
-    bookingId: string,
-    updateBookingDto: UpdateBookingDto,
-  ) {
+  async updateBooking(bookingId: string, updateBookingDto: UpdateBookingDto) {
     const booking = await this.bookingModel.findById(bookingId);
-    
+
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
-    
-    Object.assign(booking, updateBookingDto);
-    
-    await booking.save();
-    
-    return this.mapToBookingResponse(booking);
 
-    
-    
-    
-    
+    Object.assign(booking, updateBookingDto);
+
+    await booking.save();
+
+    return this.mapToBookingResponse(booking);
   }
 
   // Helper to map group class response
@@ -226,7 +224,6 @@ export class AppService {
       updatedAt: (booking as any).updatedAt,
     };
   }
-
 
   // Odjava od skupinske vadbe
   async cancelBooking(bookingId: string): Promise<{ message: string }> {

@@ -123,7 +123,6 @@ export default function Membership() {
       const pkg = packages.find(p => p._id === savedPackageId);
       if (pkg) {
         setSelectedPackage(pkg);
-        setShowPackages(true);
         setActionType("subscribe");
         // Počisti localStorage
         localStorage.removeItem("selectedPackage");
@@ -142,6 +141,7 @@ export default function Membership() {
       });
       setActionType(null);
       setSelectedPackage(null);
+      setShowPackages(false);
       await loadData();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Napaka pri naročanju";
