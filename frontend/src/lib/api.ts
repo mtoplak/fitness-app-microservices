@@ -128,7 +128,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw Object.assign(new Error(message), { status: res.status, code });
   }
   
-  return (await res.json()) as T;
+  // Handle 204 No Content responses
+  if (res.status === 204) {
+    return undefined as T;
+  }
+  
+  // Try to parse JSON, return empty object if no content
+  const text = await res.text();
+  return text ? JSON.parse(text) : {} as T;
 }
 
 // Helper to get user ID from token
@@ -365,13 +372,21 @@ export const api = {
     }
   },
 
-  cancelBooking: async (id: string) => {
-    // Try trainer booking first
+  cancelBooking: async (id: string, type?: "group_class" | "personal_training") => {
+    // Use type hint if provided, otherwise try both
+    if (type === "personal_training") {
+      await request<void>(`/trainer-bookings/${id}`, { method: "DELETE" });
+      return { message: "Booking cancelled", bookingId: id };
+    } else if (type === "group_class") {
+      await request<{ message: string }>(`/bookings/${id}`, { method: "DELETE" });
+      return { message: "Booking cancelled", bookingId: id };
+    }
+    
+    // Fallback: try both if type not specified
     try {
-      await request<{ message: string }>(`/trainer-bookings/${id}`, { method: "DELETE" });
+      await request<void>(`/trainer-bookings/${id}`, { method: "DELETE" });
       return { message: "Booking cancelled", bookingId: id };
     } catch {
-      // Try class booking
       await request<{ message: string }>(`/bookings/${id}`, { method: "DELETE" });
       return { message: "Booking cancelled", bookingId: id };
     }
@@ -684,22 +699,27 @@ export const api = {
     const fromDate = new Date(date);
     const toDate = new Date(date);
     toDate.setDate(toDate.getDate() + 1);
-    return request<Array<{
-      date: string;
-      startTime: string;
-      endTime: string;
-      isBooked: boolean;
-    }>>(`/trainers/${trainerId}/availability?from=${fromDate.toISOString()}&to=${toDate.toISOString()}`).then(slots => ({
+    return request<{
+      slots: Array<{
+        startTime: string;
+        endTime: string;
+        available: boolean;
+      }>;
+    }>(`/trainers/${trainerId}/availability?from=${fromDate.toISOString()}&to=${toDate.toISOString()}`).then(data => ({
       trainerId,
       trainerName: "",
       date,
       hourlyRate: 0,
-      slots: slots.map(s => ({
-        startTime: s.startTime,
-        endTime: s.endTime,
-        available: !s.isBooked,
-        displayTime: `${s.startTime} - ${s.endTime}`
-      }))
+      slots: data.slots.map(s => {
+        const start = new Date(s.startTime);
+        const end = new Date(s.endTime);
+        return {
+          startTime: s.startTime,
+          endTime: s.endTime,
+          available: s.available,
+          displayTime: `${start.getHours()}:${String(start.getMinutes()).padStart(2, '0')} - ${end.getHours()}:${String(end.getMinutes()).padStart(2, '0')}`
+        };
+      })
     }));
   },
 
