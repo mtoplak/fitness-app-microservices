@@ -374,6 +374,48 @@ export class AppService {
     }));
   }
 
+  async getAttendanceReport(startDate?: string, endDate?: string) {
+    const { start, end } = this.normalizeDateRange(startDate, endDate);
+    const bookings = await this.bookingModel
+      .find({
+        bookedAt: { $gte: start, $lte: end },
+      })
+      .sort({ bookedAt: 1 })
+      .exec();
+
+    if (bookings.length === 0) {
+      return [];
+    }
+
+    const classIds = Array.from(
+      new Set(bookings.map((booking) => booking.classId)),
+    );
+    const classes = await this.groupClassModel
+      .find({ _id: { $in: classIds } })
+      .exec();
+    const classMap = new Map(
+      classes.map((groupClass) => [
+        groupClass._id.toString(),
+        groupClass,
+      ]),
+    );
+
+    return bookings.map((booking) => {
+      const groupClass = classMap.get(booking.classId.toString());
+      return {
+        id: booking._id.toString(),
+        userId: booking.userId,
+        classId: booking.classId,
+        status: booking.status,
+        bookedAt: booking.bookedAt ?? (booking as any).createdAt,
+        className: groupClass?.name,
+        classSchedule: groupClass?.scheduledAt,
+        classCapacity: groupClass?.capacity,
+        currentParticipants: groupClass?.currentParticipants,
+      };
+    });
+  }
+
   deleteBooking(id: string) {
     const booking = this.bookingModel.findById(id);
     if (!booking) {
@@ -390,5 +432,23 @@ export class AppService {
     }
     this.groupClassModel.findByIdAndDelete(id);
     return { message: 'Group class deleted successfully' };
+  }
+
+  private normalizeDateRange(startDate?: string, endDate?: string) {
+    const fallbackStart = new Date();
+    fallbackStart.setMonth(fallbackStart.getMonth() - 3);
+    const start = startDate ? new Date(startDate) : fallbackStart;
+    const end = endDate ? new Date(endDate) : new Date();
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      throw new BadRequestException('Invalid date range.');
+    }
+
+    end.setHours(23, 59, 59, 999);
+    if (end < start) {
+      throw new BadRequestException('Invalid date range.');
+    }
+
+    return { start, end };
   }
 }

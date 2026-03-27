@@ -316,6 +316,7 @@ services:
     environment:
       MONGODB_URI: mongodb://admin:admin123@mongo-admin-reports:27017/fitness_admin_reports?authSource=admin
       JWT_SECRET: dev-secret-key
+      SUBSCRIPTION_SERVICE_URL: http://subscription-service:3002
       PORT: 3006
       NODE_ENV: development
     depends_on:
@@ -344,6 +345,39 @@ services:
       - ../frontend/tsconfig.json:/app/tsconfig.json
       - ../frontend/tsconfig.app.json:/app/tsconfig.app.json
       - ../frontend/tsconfig.node.json:/app/tsconfig.node.json
+    develop:
+      watch:
+        - action: sync
+          path: ../frontend/src
+          target: /app/src
+        - action: sync
+          path: ../frontend/public
+          target: /app/public
+        - action: sync
+          path: ../frontend/index.html
+          target: /app/index.html
+        - action: sync
+          path: ../frontend/vite.config.ts
+          target: /app/vite.config.ts
+        - action: sync
+          path: ../frontend/tailwind.config.ts
+          target: /app/tailwind.config.ts
+        - action: sync
+          path: ../frontend/postcss.config.js
+          target: /app/postcss.config.js
+        - action: sync
+          path: ../frontend/tsconfig.json
+          target: /app/tsconfig.json
+        - action: sync
+          path: ../frontend/tsconfig.app.json
+          target: /app/tsconfig.app.json
+        - action: sync
+          path: ../frontend/tsconfig.node.json
+          target: /app/tsconfig.node.json
+        - action: rebuild
+          path: ../frontend/package.json
+        - action: rebuild
+          path: ../frontend/package-lock.json
     networks:
       - fitness-network
     depends_on:
@@ -379,6 +413,34 @@ services:
         
         echo "🔧 Configuring Kong routes..."
         KONG_ADMIN="http://kong:8001"
+        
+        # Create or update a Kong service
+        configure_service() {
+          SERVICE_NAME=$$1
+          SERVICE_URL=$$2
+          
+          # Try to get existing service
+          SERVICE_ID=$$(curl -s $$KONG_ADMIN/services/$$SERVICE_NAME 2>/dev/null | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
+          
+          if [ -n "$$SERVICE_ID" ]; then
+            # Update existing service
+            curl -s -X PATCH "$$KONG_ADMIN/services/$$SERVICE_NAME" \
+              --data "url=$$SERVICE_URL" > /dev/null
+          else
+            # Create new service
+            curl -s -X POST "$$KONG_ADMIN/services" \
+              --data "name=$$SERVICE_NAME" \
+              --data "url=$$SERVICE_URL" > /dev/null
+          fi
+        }
+        
+        # Ensure services exist before creating routes
+        configure_service "user-service" "http://user-service:3001"
+        configure_service "subscription-service" "http://subscription-service:3002"
+        configure_service "trainer-booking-service" "http://trainer-booking-service:3003"
+        configure_service "workout-schedule-service" "http://workout-schedule-service:3004"
+        configure_service "group-class-booking-service" "http://group-class-booking-service:3005"
+        configure_service "admin-reporting-service" "http://admin-reporting-service:3006"
         
         # Delete existing routes
         for route_id in $$(curl -s $$KONG_ADMIN/routes 2>/dev/null | grep -o '"id":"[^"]*"' | cut -d'"' -f4); do

@@ -1,5 +1,6 @@
 using MongoDB.Driver;
 using SubscriptionService.Models;
+using System.Globalization;
 
 namespace SubscriptionService.Services
 {
@@ -98,6 +99,116 @@ namespace SubscriptionService.Services
         {
             payment.CreatedAt = DateTime.UtcNow;
             await _payments.InsertOneAsync(payment);
+        }
+
+        public async Task<RevenueReport> GetRevenueReport(DateTime start, DateTime end)
+        {
+            var payments = await GetPaymentsInRange(start, end);
+            var subscriptionIds = payments
+                .Select(p => p.SubscriptionId)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+            var subscriptions = await GetSubscriptionsByIds(subscriptionIds);
+            var subscriptionById = subscriptions
+                .Where(s => !string.IsNullOrWhiteSpace(s.Id))
+                .ToDictionary(s => s.Id!, s => s);
+            var activeSubscriptions = await GetActiveSubscriptionsInRange(start, end);
+            var totalRevenue = payments.Sum(p => p.Amount);
+
+            var byPackage = payments
+                .Select(p =>
+                {
+                    subscriptionById.TryGetValue(p.SubscriptionId, out var sub);
+                    var name = sub?.PlanName ?? "Unknown";
+                    var price = sub?.PlanPrice ?? 0m;
+                    return new { name, price, amount = p.Amount };
+                })
+                .GroupBy(x => new { x.name, x.price })
+                .Select(group => new PackageRevenue
+                {
+                    PackageName = group.Key.name,
+                    Price = group.Key.price,
+                    Count = group.Count(),
+                    Revenue = group.Sum(x => x.amount)
+                })
+                .OrderByDescending(group => group.Revenue)
+                .ToList();
+
+            var monthly = new List<MonthlyRevenue>();
+            var culture = CultureInfo.GetCultureInfo("sl-SI");
+            var cursor = new DateTime(start.Year, start.Month, 1);
+            var endCursor = new DateTime(end.Year, end.Month, 1);
+
+            while (cursor <= endCursor)
+            {
+                var monthStart = cursor;
+                var monthEnd = cursor.AddMonths(1).AddTicks(-1);
+                var monthRevenue = payments
+                    .Where(p => p.PaymentDate >= monthStart && p.PaymentDate <= monthEnd)
+                    .Sum(p => p.Amount);
+                var activeCount = CountActiveAt(activeSubscriptions, monthEnd);
+
+                monthly.Add(new MonthlyRevenue
+                {
+                    Month = monthStart.ToString("MMM", culture),
+                    Year = monthStart.Year,
+                    MonthNumber = monthStart.Month,
+                    Revenue = monthRevenue,
+                    ActiveMemberships = activeCount
+                });
+
+                cursor = cursor.AddMonths(1);
+            }
+
+            return new RevenueReport
+            {
+                Period = new ReportPeriod
+                {
+                    Start = start.ToString("yyyy-MM-dd"),
+                    End = end.ToString("yyyy-MM-dd")
+                },
+                TotalRevenue = totalRevenue,
+                SubscriptionsByPackage = byPackage,
+                MonthlyRevenue = monthly,
+                TotalActiveMemberships = CountActiveAt(activeSubscriptions, end)
+            };
+        }
+
+        private async Task<List<Payment>> GetPaymentsInRange(DateTime start, DateTime end)
+        {
+            var filter = Builders<Payment>.Filter.And(
+                Builders<Payment>.Filter.Gte(p => p.PaymentDate, start),
+                Builders<Payment>.Filter.Lte(p => p.PaymentDate, end),
+                Builders<Payment>.Filter.Eq(p => p.Status, "completed")
+            );
+            return await _payments.Find(filter).ToListAsync();
+        }
+
+        private async Task<List<Subscription>> GetSubscriptionsByIds(List<string> ids)
+        {
+            if (ids.Count == 0)
+            {
+                return new List<Subscription>();
+            }
+
+            var filter = Builders<Subscription>.Filter.In(s => s.Id, ids);
+            return await _subscriptions.Find(filter).ToListAsync();
+        }
+
+        private async Task<List<Subscription>> GetActiveSubscriptionsInRange(DateTime start, DateTime end)
+        {
+            var filter = Builders<Subscription>.Filter.And(
+                Builders<Subscription>.Filter.Eq(s => s.Status, "active"),
+                Builders<Subscription>.Filter.Lte(s => s.StartDate, end),
+                Builders<Subscription>.Filter.Gte(s => s.EndDate, start)
+            );
+            return await _subscriptions.Find(filter).ToListAsync();
+        }
+
+        private static int CountActiveAt(List<Subscription> subscriptions, DateTime date)
+        {
+            return subscriptions.Count(s => s.StartDate <= date && s.EndDate >= date);
         }
     }
 }

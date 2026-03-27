@@ -11,7 +11,7 @@ namespace TrainerBookingService.Scripts
             Console.WriteLine("🌱 Seeding Trainer Booking Service...");
             
             var mongoUri = Environment.GetEnvironmentVariable("MONGODB_URI") 
-                ?? "mongodb://admin:admin123@localhost:27020/fitness_trainer_bookings?authSource=admin";
+                ?? "mongodb://admin:admin123@mongo-trainer-bookings:27017/fitness_trainer_bookings?authSource=admin";
             
             var client = new MongoClient(mongoUri);
             var database = client.GetDatabase("fitness_trainer_bookings");
@@ -25,15 +25,26 @@ namespace TrainerBookingService.Scripts
             
             // Create trainers (matching the user-service seed data)
             var specializations = new[] { "Strength Training", "Cardio", "Yoga", "Pilates", "CrossFit", "Boxing", "Nutrition" };
+            var trainerSeed = new[]
+            {
+                new { Id = "696d030d92e2df6f97219a86", Name = "Ana Kovač", Email = "ana.kovac@wiifit.si" },
+                new { Id = "696d030d92e2df6f97219a88", Name = "Marko Novak", Email = "marko.novak@wiifit.si" },
+                new { Id = "696d030d92e2df6f97219a8a", Name = "Luka Horvat", Email = "luka.horvat@wiifit.si" },
+                new { Id = "696d030d92e2df6f97219a8c", Name = "Sara Petek", Email = "sara.petek@wiifit.si" },
+                new { Id = "696d030d92e2df6f97219a8e", Name = "Tomaž Zupan", Email = "tomaz.zupan@wiifit.si" },
+                new { Id = "696d030d92e2df6f97219a90", Name = "Maja Žnidaršič", Email = "maja.znidarsic@wiifit.si" },
+                new { Id = "696d030d92e2df6f97219a92", Name = "Rok Breznik", Email = "rok.breznik@wiifit.si" }
+            };
             
             var trainers = new List<TrainerProfile>();
-            for (int i = 0; i < 7; i++)
+            for (int i = 0; i < trainerSeed.Length; i++)
             {
+                var seed = trainerSeed[i];
                 var trainer = new TrainerProfile
                 {
-                    UserId = ObjectId.GenerateNewId().ToString(), // Placeholder - should match user-service trainer IDs
-                    FullName = $"Trainer {i + 1}",
-                    Email = $"trainer{i + 1}@wiifit.si",
+                    UserId = seed.Id,
+                    FullName = seed.Name,
+                    Email = seed.Email,
                     TrainerType = i % 2 == 0 ? "personal" : "group",
                     Specializations = new List<string> 
                     { 
@@ -53,9 +64,9 @@ namespace TrainerBookingService.Scripts
             // Create some sample bookings
             var sampleUserIds = new[]
             {
-                ObjectId.GenerateNewId().ToString(),
-                ObjectId.GenerateNewId().ToString(),
-                ObjectId.GenerateNewId().ToString()
+                "696d030d92e2df6f97219a94",
+                "696d030d92e2df6f97219a96",
+                "696d030d92e2df6f97219a98"
             };
             
             var bookings = new List<Booking>();

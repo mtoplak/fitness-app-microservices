@@ -143,6 +143,14 @@ function getUserIdFromToken(): string | null {
   }
 }
 
+function formatTimeLabel(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
 export const api = {
   // ========== USER SERVICE (user-service:3001) ==========
   register: (data: { email: string; password: string; firstName: string; lastName: string; address?: string; role?: "admin" | "trainer" | "member" }) =>
@@ -698,7 +706,7 @@ export const api = {
         startTime: s.startTime,
         endTime: s.endTime,
         available: !s.isBooked,
-        displayTime: `${s.startTime} - ${s.endTime}`
+        displayTime: `${formatTimeLabel(s.startTime)} - ${formatTimeLabel(s.endTime)}`
       }))
     }));
   },
@@ -872,4 +880,3 @@ export const api = {
     method: "DELETE"
   }),
 };
-
